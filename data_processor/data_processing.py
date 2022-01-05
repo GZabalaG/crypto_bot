@@ -2,7 +2,7 @@
 #Future methods to load streaming data and upload live forecast
 
 import pandas as pd
-from Utils.crypto_utils import Features
+from utils.crypto_utils import Features
 
 class DataProcessor:
 
