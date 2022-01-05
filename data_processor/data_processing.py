@@ -20,7 +20,7 @@ class DataProcessor:
         self.crypto_df = []
         for crypto_name in self.cryptos_names:
             print('Loading...', crypto_name)
-            path = '/crypto_bot/Datasets/' + crypto_name + '.csv'
+            path = '../Datasets/' + crypto_name + '.csv'
             df = pd.read_csv(path, header=[1])
             self.crypto_df.append(df)
 
@@ -68,7 +68,7 @@ class DataProcessor:
             if self.cryptos_names[i] in cryptos_names:
                 df['High Low Difference'] = df['high'] - df['low']
                 df['Open Close Difference'] = df['open'] - df['close']
-                df['Result'] = df.apply(Features.high_low(column='High Low Difference'), axis=1)
+                df['Result'] = df.apply(lambda row: Features.high_low(row), axis=1)
                 df['Support 1'] = 0
                 df['Support 2'] = 0
                 df['Support 3'] = 0
