@@ -1,2 +1,2 @@
-# crypto_Bbot
+# crypto_bot
 Crypto prediction
