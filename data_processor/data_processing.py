@@ -4,6 +4,7 @@
 import pandas as pd
 from utils.crypto_utils import Features
 
+
 class DataProcessor:
 
     def __init__(self, cryptos): # Constructor
@@ -19,7 +20,7 @@ class DataProcessor:
         self.crypto_df = []
         for crypto_name in self.cryptos_names:
             print('Loading...', crypto_name)
-            path = '/content/drive/MyDrive/Master IA/TFM - Crypto/Datasets/' + crypto_name + '.csv'
+            path = '/crypto_bot/Datasets/' + crypto_name + '.csv'
             df = pd.read_csv(path, header=[1])
             self.crypto_df.append(df)
 
