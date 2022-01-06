@@ -69,14 +69,14 @@ class DataProcessor:
                 df['High Low Difference'] = df['high'] - df['low']
                 df['Open Close Difference'] = df['open'] - df['close']
                 df['Result'] = df.apply(lambda row: Features.high_low(row), axis=1)
-                df['Support 1'] = 0
-                df['Support 2'] = 0
-                df['Support 3'] = 0
-                df['Support 4'] = 0
-                df['Ressistance 1'] = 0
-                df['Ressistance 2'] = 0
-                df['Ressistance 3'] = 0
-                df['Ressistance 4'] = 0
+                df['Support 1'] = Features.get_support(df, 5, 'S')
+                df['Support 2'] = Features.get_support(df, 50, 'S')
+                df['Support 3'] = Features.get_support(df, 200, 'S')
+                df['Support 4'] = Features.get_support(df, 500, 'S')
+                df['Ressistance 1'] = Features.get_support(df, 5, 'R')
+                df['Ressistance 2'] = Features.get_support(df, 50, 'R')
+                df['Ressistance 3'] = Features.get_support(df, 200, 'R')
+                df['Ressistance 4'] = Features.get_support(df, 500, 'R')
                 df['RSI'] = 0
                 df['ADX'] = 0
                 df['Ichimoku'] = 0
@@ -89,7 +89,7 @@ class DataProcessor:
                 df['OBV'] = 0
             i+=1
 
-    def feature_selection(self, crypto_name): # Feautre selection method
+    def feature_selection(self, crypto_name): # Feature selection method
         '''
         Eliminates features not relevant or highly correlated to others
         '''
