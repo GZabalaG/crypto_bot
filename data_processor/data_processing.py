@@ -37,6 +37,8 @@ class DataProcessor:
                 df.dropna(inplace =True)
                 print('Change date format')
                 df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d %H:%M:%S')
+                print('Reverse order')
+                df = df.iloc[::-1]
             i+=1
 
 
@@ -62,6 +64,7 @@ class DataProcessor:
         - Fib. Retracement
         - Exponential moving average (EMA)
         - On Balance Volume
+        - SMA
         '''
         i = 0
         for df in self.crypto_df:
@@ -69,24 +72,27 @@ class DataProcessor:
                 df['High Low Difference'] = df['high'] - df['low']
                 df['Open Close Difference'] = df['open'] - df['close']
                 df['Result'] = df.apply(lambda row: Features.high_low(row), axis=1)
-                df['Support 1'] = Features.get_support(df, 5, 'S')
-                df['Support 2'] = Features.get_support(df, 50, 'S')
-                df['Support 3'] = Features.get_support(df, 200, 'S')
-                df['Support 4'] = Features.get_support(df, 500, 'S')
-                df['Ressistance 1'] = Features.get_support(df, 5, 'R')
-                df['Ressistance 2'] = Features.get_support(df, 50, 'R')
-                df['Ressistance 3'] = Features.get_support(df, 200, 'R')
-                df['Ressistance 4'] = Features.get_support(df, 500, 'R')
-                df['RSI'] = 0
-                df['ADX'] = 0
-                df['Ichimoku'] = 0
+                df['Sup 5'] = Features.get_support_resistance(df, 5, 'S')
+                df['Sup 50'] = Features.get_support_resistance(df, 50, 'S')
+                df['Sup 200'] = Features.get_support_resistance(df, 200, 'S')
+                df['Sup 500'] = Features.get_support_resistance(df, 500, 'S',)
+                df['Res 5'] = Features.get_support_resistance(df, 5, 'R')
+                df['Res 50'] = Features.get_support_resistance(df, 50, 'R')
+                df['Res 200'] = Features.get_support_resistance(df, 200, 'R')
+                df['Res 500'] = Features.get_support_resistance(df, 500, 'R')
+                df['RSI'] = Features.get_rsi(df)
+                df['plus_di'] = Features.get_adx(df, 14)[0]
+                df['minus_di'] = Features.get_adx(df, 14)[1]
+                df['ADX'] = Features.get_adx(df, 14)[2]
+                df['SMA'] = Features.get_sma(df, 14)
                 df['Standard Deviation'] = 0
                 df['Bollinger'] = 0
                 df['Stochastic Oscillator'] = 0
                 df['MACD'] = 0
-                df['Fib Retracement'] = 0
                 df['EMA'] = 0
                 df['OBV'] = 0
+                df['Ichimoku'] = 0
+                df['Fib Retracement'] = 0
             i+=1
 
     def feature_selection(self, crypto_name): # Feature selection method
