@@ -1,19 +1,39 @@
 # Utils methods for this project
 import pandas as pd
+import numpy as np
 from pandas.core.frame import DataFrame
 
-class Features:
+class TradeOps:
 
     def __init__(self): # Constructor
         pass
 
-    def high_low(row):
+    def buy(self):
+        pass
+    def sell(self):
+        pass
+    
+    def limit_order(self):
+        pass
+
+    def stop_order(self):
+        pass
+
+    def stop_limit_order(self):
+        pass
+
+class FeaturesExtractor:
+
+    def __init__(self): # Constructor
+        pass
+
+    def high_low(self, row):
         '''
         Returns the period high-low difference result
         '''
         return 1 if row['Open Close Difference'] > 0 else 0
 
-    def get_support_resistance(df, shift, op):
+    def get_support_resistance(self, df, shift, op):
         '''
         Returns the support or resistance level of shift periods before based on maximum or minimum
         '''
@@ -24,7 +44,7 @@ class Features:
         else: 
             print('Error: not valid operation. R: resistance, S: support')
 
-    def get_rsi(df, periods = 14, ema = True):
+    def get_rsi(self, df, periods = 14, ema = True):
         """
         Returns the relative strength index.
         """
@@ -47,7 +67,7 @@ class Features:
         rsi = 100 - (100/(1 + rsi))
         return rsi
 
-    def get_adx(df, lookback):
+    def get_adx(self, df, lookback):
         '''
         Return plus_di, minus_di and ADX in lookback periods
         '''
@@ -71,10 +91,69 @@ class Features:
         
         return plus_di, minus_di, adx_smooth
 
-    def get_sma(df, n):
+    def get_sma(self, df, n):
         '''
-        Return SMA of n periods
+        Returns SMA of n periods
         '''
         return pd.DataFrame(df['close'].rolling(window = n).mean())
-
     
+    def get_std(self, df, n):
+        '''
+        Returns Standard deviation in n rolling periods
+        '''
+        return pd.DataFrame(df['close'].rolling(window = n).std())
+
+    def get_bollinger_bands(self, df, n, factor):
+        '''
+        Returns lower and upper bollinger bands
+        '''
+        sma = self.get_sma(df, n)
+        std = self.get_std(df, n)
+        upper_band = sma + (factor * std)
+        lower_band = sma - (factor * std)
+        return upper_band, lower_band
+    
+    def get_stoch(self, df, k_period, d_period):
+        high = df['high'].rolling(k_period).max()
+        low = df['low'].rolling(k_period).min()
+        so_k = (df['close'] - low)*100/(high - low)
+        so_d = so_k.rolling(d_period).mean()
+        return so_k, so_d
+    
+    def get_macd(self, df, slow, fast, smooth):
+        exp1 = df['close'].ewm(span = fast, adjust = False).mean()
+        exp2 = df['close'].ewm(span = slow, adjust = False).mean()
+        macd = pd.DataFrame(exp1 - exp2).rename(columns = {'close':'macd'})
+        signal = pd.DataFrame(macd.ewm(span = smooth, adjust = False).mean()).rename(columns = {'macd':'signal'})
+        hist = pd.DataFrame(macd['macd'] - signal['signal']).rename(columns = {0:'hist'})
+        return macd, signal, hist
+
+    def get_ema(self, df, period):
+        return df['close'].ewm(span = period, adjust = False).mean()
+
+    def get_obv(self, df):
+        return np.sign(df['close'].diff()) * df['Volume USDT'].fillna(0).cumsum()
+
+    def get_ichimoku(self, df):
+        # Tenkan-sen (Conversion Line): (9-period high + 9-period low)/2))
+        period9_high = pd.rolling_max(df['high'], window=9)
+        period9_low = pd.rolling_min(df['low'], window=9)
+        tenkan_sen = (period9_high + period9_low) / 2
+
+        # Kijun-sen (Base Line): (26-period high + 26-period low)/2))
+        period26_high = pd.rolling_max(df['high'], window=26)
+        period26_low = pd.rolling_min(df['low'], window=26)
+        kijun_sen = (period26_high + period26_low) / 2
+
+        # Senkou Span A (Leading Span A): (Conversion Line + Base Line)/2))
+        senkou_span_a = ((tenkan_sen + kijun_sen) / 2).shift(26)
+
+        # Senkou Span B (Leading Span B): (52-period high + 52-period low)/2))
+        period52_high = pd.rolling_max(df['high'], window=52)
+        period52_low = pd.rolling_min(df['low'], window=52)
+        senkou_span_b = ((period52_high + period52_low) / 2).shift(26)
+
+        # The most current closing price plotted 22 time periods behind (optional)
+        chikou_span = df['close'].shift(-22) # 22 according to investopedia
+
+        return tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span
