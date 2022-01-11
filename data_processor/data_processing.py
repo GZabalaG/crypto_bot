@@ -22,7 +22,7 @@ class DataProcessor:
             print('Loading...', crypto_name)
             path = '../Datasets/' + crypto_name + '.csv'
             df = pd.read_csv(path, header=[1])
-            print('Reverse order')
+            print('Reversing order')
             df = df.iloc[::-1].reset_index(drop=True)
             self.crypto_df.append(df)
 
@@ -33,11 +33,11 @@ class DataProcessor:
         i = 0
         for df in self.crypto_df:
             if self.cryptos_names[i] in cryptos_names: # if crypto is already loaded
-                print('Drop columns')
+                print('Dropping columns')
                 df.drop(columns=['symbol', 'unix', 'Volume ETH'], inplace = True)
-                print('Drop Nan')
+                print('Dropping Nan')
                 df.dropna(inplace =True)
-                print('Change date format')
+                print('Changing date format')
                 df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d %H:%M:%S')
             i+=1
 
@@ -100,6 +100,7 @@ class DataProcessor:
                 df['I_senkou_span_a'] = fe.get_ichimoku(df)[2]
                 df['I_senkou_span_b'] = fe.get_ichimoku(df)[3]
                 df['I_chikou_span'] = fe.get_ichimoku(df)[4]
+                df['ATR'] = fe.get_atr(df, 14)
             i+=1
 
     def feature_selection(self, crypto_name): # Feature selection method

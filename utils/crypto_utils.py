@@ -3,25 +3,6 @@ import pandas as pd
 import numpy as np
 from pandas.core.frame import DataFrame
 
-class TradeOps:
-
-    def __init__(self): # Constructor
-        pass
-
-    def buy(self):
-        pass
-    def sell(self):
-        pass
-    
-    def limit_order(self):
-        pass
-
-    def stop_order(self):
-        pass
-
-    def stop_limit_order(self):
-        pass
-
 class FeaturesExtractor:
 
     def __init__(self): # Constructor
@@ -136,24 +117,34 @@ class FeaturesExtractor:
 
     def get_ichimoku(self, df):
         # Tenkan-sen (Conversion Line): (9-period high + 9-period low)/2))
-        period9_high = pd.rolling_max(df['high'], window=9)
-        period9_low = pd.rolling_min(df['low'], window=9)
+        period9_high = df['high'].rolling(window = 9).max()
+        period9_low = df['low'].rolling(window=9).min()
         tenkan_sen = (period9_high + period9_low) / 2
 
         # Kijun-sen (Base Line): (26-period high + 26-period low)/2))
-        period26_high = pd.rolling_max(df['high'], window=26)
-        period26_low = pd.rolling_min(df['low'], window=26)
+        period26_high = df['high'].rolling(window = 26).max()
+        period26_low = df['low'].rolling(window = 26).min()
         kijun_sen = (period26_high + period26_low) / 2
 
         # Senkou Span A (Leading Span A): (Conversion Line + Base Line)/2))
         senkou_span_a = ((tenkan_sen + kijun_sen) / 2).shift(26)
 
         # Senkou Span B (Leading Span B): (52-period high + 52-period low)/2))
-        period52_high = pd.rolling_max(df['high'], window=52)
-        period52_low = pd.rolling_min(df['low'], window=52)
+        period52_high = df['high'].rolling(window = 52).max()
+        period52_low = df['low'].rolling(window = 52).max()
         senkou_span_b = ((period52_high + period52_low) / 2).shift(26)
 
         # The most current closing price plotted 22 time periods behind (optional)
         chikou_span = df['close'].shift(-22) # 22 according to investopedia
 
         return tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b, chikou_span
+    
+    def get_atr(self, df, period):
+        high_low = df['high'] - df['low']
+        high_close = np.abs(df['high'] - df['close'].shift())
+        low_close = np.abs(df['low'] - df['close'].shift())
+
+        ranges = pd.concat([high_low, high_close, low_close], axis=1)
+        true_range = np.max(ranges, axis=1)
+
+        return true_range.rolling(period).sum()/period
