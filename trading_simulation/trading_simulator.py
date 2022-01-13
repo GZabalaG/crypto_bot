@@ -14,7 +14,7 @@ class TradingSimulator:
         self.stop_loss_take_profit_strategy = stop_loss_take_profit_strategy
         self.balance = balance
         self.df = self.init_crypto(crypto_name)
-        column_names = ['order_id', 'close', 'total(€)', 'stop_loss', 'take_profit']
+        column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
         self.orders = pd.DataFrame(columns = column_names)
 
     
@@ -34,27 +34,62 @@ class TradingSimulator:
         pass
 
     def apply_strategy(self, row):
-        if self.trigger_strategy(self.strategy, row):
-            self.buy(row)
+        if self.trigger_strategy(row):
+            self.buy(row['close'])
 
-    def trigger_strategy(self, strategy, row):
+    def trigger_strategy(self, row):
         # Logica que devuelve true si se cumple la condicion de la strategy actual
-        return True
+        if self.strategy == 1: # SMA - SO
+            pass
+        elif self.strategy == 2: # BB - SO
+            pass
+        elif self.strategy == 3: # MACD - RSI
+            pass
+        elif self.strategy == 4: # ADX - BB - RSI
+            pass
+        elif self.strategy == 5: # BB - MACD
+            pass
+        elif self.strategy == 6: # OBV - RSI - BB
+            pass
+        else: # Ichimoku
+            pass
 
     def check_orders(self, close):
         # comprobar orders para ver si debemos retirar alguna
         # if row stop loss order or take profit is met then apply balance changes and eliminate order
         for order in self.orders.iterrows():
             # update trailing stop loss strategy: subir stop loss si close price es menor de x%
-            if(close <= order['stop_loss'] or close >= order['take_profit']):
-                self.sell(order)
+            if self.stop_loss_take_profit_strategy == 2: 
+                if order['stop_loss'] <= close*ratio: order['stop_loss'] = close*ratio
 
-    def buy(self, row):
-        # Modify balance = balance - 102 (comision)
-        # Create order with stop_loss and take profit based on stop_loss_take_profit_strategy
-        pass
+            if(close <= order['stop_loss'] or close >= order['take_profit']):
+                self.sell(order, close)
+
+    def buy(self, close):
+        '''
+        Create order with stop_loss and take profit based on stop_loss_take_profit_strategy
+        '''
+        self.balance = self.balance - 102 #(comision)
+
+        if self.stop_loss_take_profit_strategy == 1: # ATR
+            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            self.orders = self.orders.append(new_order, ignore_index=True)
+        
+        elif self.stop_loss_take_profit_strategy == 2: # Trailing
+            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            self.orders = self.orders.append(new_order, ignore_index=True)
+       
+        elif self.stop_loss_take_profit_strategy == 3: # % Loss - Profit
+            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            self.orders = self.orders.append(new_order, ignore_index=True)
+
+        else: # Sup - Res levels
+            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            self.orders = self.orders.append(new_order, ignore_index=True)
+
     
-    def sell(self):
-        # Modify balance = balance + % profit * 100
+    def sell(self, close):
+        # profit = order['close']/close
+        # Modify balance = balance + % profit * order['Total(€)']
         # Eliminate order from orders
         pass
