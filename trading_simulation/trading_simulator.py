@@ -57,13 +57,13 @@ class TradingSimulator:
     def check_orders(self, close):
         # comprobar orders para ver si debemos retirar alguna
         # if row stop loss order or take profit is met then apply balance changes and eliminate order
-        for order in self.orders.iterrows():
+        for index, order in self.orders.iterrows():
             # update trailing stop loss strategy: subir stop loss si close price es menor de x%
             if self.stop_loss_take_profit_strategy == 2: 
                 if order['stop_loss'] <= close*ratio: order['stop_loss'] = close*ratio
 
             if(close <= order['stop_loss'] or close >= order['take_profit']):
-                self.sell(order, close)
+                self.sell(order, close, index) # Sell and drop order from orders dataframe
 
     def buy(self, close):
         '''
@@ -72,24 +72,26 @@ class TradingSimulator:
         self.balance = self.balance - 102 #(comision)
 
         if self.stop_loss_take_profit_strategy == 1: # ATR
-            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            new_order = {'close_entry':close, 'total(€)':100, 'stop_loss':close, 'take_profit':close}
             self.orders = self.orders.append(new_order, ignore_index=True)
         
         elif self.stop_loss_take_profit_strategy == 2: # Trailing
-            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            new_order = {'close_entry':close, 'total(€)':100, 'stop_loss':close, 'take_profit':close}
             self.orders = self.orders.append(new_order, ignore_index=True)
        
         elif self.stop_loss_take_profit_strategy == 3: # % Loss - Profit
-            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            new_order = {'close_entry':close, 'total(€)':100, 'stop_loss':close, 'take_profit':close}
             self.orders = self.orders.append(new_order, ignore_index=True)
 
         else: # Sup - Res levels
-            new_order = {'total(€)':100, 'stop_loss':close, 'take_profit':close}
+            new_order = {'close_entry':close, 'total(€)':100, 'stop_loss':close, 'take_profit':close}
             self.orders = self.orders.append(new_order, ignore_index=True)
 
     
-    def sell(self, close):
-        # profit = order['close']/close
-        # Modify balance = balance + % profit * order['Total(€)']
-        # Eliminate order from orders
-        pass
+    def sell(self, order, close, index):
+        '''
+        Change balance based on order profit
+        '''
+        profit = close/order['close_entry']
+        self.balance += profit * order['Total(€)']
+        self.orders.drop(index) # Eliminate order from orders
