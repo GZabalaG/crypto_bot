@@ -4,7 +4,7 @@ import pandas as pd
 
 class TradingSimulator:
 
-    def __init__(self, processor, crypto_name, strategy = [1, 2], stop_loss_take_profit_strategy = 2, balance = 10000, loss_allowed=0.1, take_profit_mul = 3): # Constructor
+    def __init__(self, processor, crypto_name, strategy = [1, 2, 3], stop_loss_take_profit_strategy = 2, balance = 10000, loss_allowed=0.1, take_profit_mul = 3): # Constructor
         '''
         Simulator to calculate final result in balance after following a strategy
         processor: Crypto processor
@@ -25,6 +25,9 @@ class TradingSimulator:
         self.orders = pd.DataFrame(columns = column_names)
         self.loss_allowed = loss_allowed
         self.take_profit_mul = take_profit_mul
+        self.total_invest = 0
+        self.orders_won = 0
+        self.total_orders = 0
     
     def init_crypto(self):
         '''
@@ -46,7 +49,9 @@ class TradingSimulator:
             if(self.balance > 100):
                 self.trigger_strategy(prev_row, row) # Comprueba si se realiza algún buy si se cumple alguna estrategia
             prev_row = row
-        pass
+        print('Total invested:', self.total_invest, '€')
+        print('Orders won:', self.orders_won)
+        print('Orders lost:', self.total_orders - self.orders_won)
 
     def trigger_strategy(self, prev_row ,row):
         '''
@@ -57,7 +62,7 @@ class TradingSimulator:
             self.buy(row, strategy = 1)
         if 2 in self.strategy and row['SO_K'] > 20 and prev_row['close'] >= prev_row['lower_b_band'] and row['close'] < row['lower_b_band']: # BB - SO
             self.buy(row, strategy = 2)
-        if 3 in self.strategy: # MACD - RSI
+        if 3 in self.strategy and row['RSI'] > 50 and prev_row['MACD'] < prev_row['MACD_signal'] and row['MACD'] >= row['MACD_signal']: # MACD - RSI
             self.buy(row, strategy = 3)
         if 4 in self.strategy: # ADX - BB - RSI
             self.buy(row, strategy = 4)
@@ -72,7 +77,6 @@ class TradingSimulator:
         '''
         Check any order to sell
         '''
-        # comprobar orders para ver si debemos retirar alguna
         # if row stop loss order or take profit is met then apply balance changes and eliminate order
         for index, order in self.orders.iterrows():
             # update trailing stop loss strategy: subir stop loss si close price es menor de x%
@@ -93,14 +97,16 @@ class TradingSimulator:
             take_profit = row['close']+self.take_profit_mul*row['ATR']
             new_order = {'close_entry':row['close'], 'total(€)':100, 'stop_loss':stop_loss, 'take_profit':take_profit}
             self.orders = self.orders.append(new_order, ignore_index=True)
+            self.total_invest += 100
             
             print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, ' | ATR:', row['ATR'], '|||')
         
         elif self.stop_loss_take_profit_strategy == 2: # Trailing
             stop_loss = row['close']-self.loss_allowed*row['close']
-            take_profit = 99999999999999 # We can't never reach take profit
+            take_profit = 99999999999999 # We can't never reach take profit, change in the future in the check orders
             new_order = {'close_entry':row['close'], 'total(€)':100, 'stop_loss':stop_loss, 'take_profit':take_profit}
             self.orders = self.orders.append(new_order, ignore_index=True)
+            self.total_invest += 100
             
             print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, '|||')
 
@@ -109,6 +115,7 @@ class TradingSimulator:
             take_profit = row['close']+self.take_profit_mul*self.loss_allowed*row['close']
             new_order = {'close_entry':row['close'], 'total(€)':100, 'stop_loss':stop_loss, 'take_profit':take_profit}
             self.orders = self.orders.append(new_order, ignore_index=True)
+            self.total_invest += 100
             
             print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, '|||')
 
@@ -122,6 +129,8 @@ class TradingSimulator:
         '''
         entry = order['close_entry']
         profit = close/entry
+        if(profit > 1): self.orders_won += 1
+        self.total_orders += 1
         self.balance += profit * order['total(€)']
         self.orders.drop(index, inplace=True) # Eliminate order from orders
         print('Sell order', index, 'on', date,' ||| Close:', close,'| Entry', entry,'| Profit:', profit,'| Balance:', self.balance, '|||')
