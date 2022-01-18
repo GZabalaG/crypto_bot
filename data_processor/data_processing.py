@@ -79,7 +79,8 @@ class DataProcessor:
                 df['Res 50'] = fe.get_support_resistance(df, 50, 'R')
                 df['Res 200'] = fe.get_support_resistance(df, 200, 'R')
                 df['Res 500'] = fe.get_support_resistance(df, 500, 'R')
-                df['SMA'] = fe.get_sma(df, 14)
+                df['SMA 50'] = fe.get_sma(df, 50)
+                df['SMA 200'] = fe.get_sma(df, 200)
                 df['upper_b_band'] = fe.get_bollinger_bands(df, 14, 2)[0]
                 df['lower_b_band'] = fe.get_bollinger_bands(df, 14, 2)[1]
                 df['EMA_8'] = fe.get_ema(df, 8)
