@@ -4,7 +4,7 @@ import pandas as pd
 
 class TradingSimulator:
 
-    def __init__(self, processor, crypto_name, strategy = [1, 2, 3], stop_loss_take_profit_strategy = 2, balance = 10000, loss_allowed=0.1, take_profit_mul = 3): # Constructor
+    def __init__(self, processor, crypto_name, strategy = [6], stop_loss_take_profit_strategy = 2, balance = 10000, loss_allowed=0.1, take_profit_mul = 3): # Constructor
         '''
         Simulator to calculate final result in balance after following a strategy
         processor: Crypto processor
@@ -50,6 +50,7 @@ class TradingSimulator:
                 self.trigger_strategy(prev_row, row) # Comprueba si se realiza algún buy si se cumple alguna estrategia
             prev_row = row
         print('Total invested:', self.total_invest, '€')
+        print('Balance:', self.balance, '€')
         print('Orders won:', self.orders_won)
         print('Orders lost:', self.total_orders - self.orders_won)
 
@@ -57,21 +58,30 @@ class TradingSimulator:
         '''
         Returns true whenever the strategy is met for df (crypto) on index row
         '''
-         # SMA - SO
+         # SMA or EMA - SO
         if 1 in self.strategy and row['SO_K'] > 20 and row['SMA 50'] >= row['SMA 200'] and prev_row['SMA 50'] < prev_row['SMA 200']:
             self.buy(row, strategy = 1)
-        if 2 in self.strategy and row['SO_K'] > 20 and prev_row['close'] >= prev_row['lower_b_band'] and row['close'] < row['lower_b_band']: # BB - SO
+        # BB - SO
+        if 2 in self.strategy and row['SO_K'] > 20 and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
             self.buy(row, strategy = 2)
-        if 3 in self.strategy and row['RSI'] > 50 and prev_row['MACD'] < prev_row['MACD_signal'] and row['MACD'] >= row['MACD_signal']: # MACD - RSI
+        # MACD - RSI
+        if 3 in self.strategy and row['RSI'] > 30 and prev_row['MACD'] < prev_row['MACD_signal'] and row['MACD'] >= row['MACD_signal']:
             self.buy(row, strategy = 3)
-        if 4 in self.strategy: # ADX - BB - RSI
+        # ADX - BB - RSI
+        if 4 in self.strategy and row['RSI'] > 30 and row['ADX'] > 25 and row['ADX'] < 50 and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
             self.buy(row, strategy = 4)
-        if 5 in self.strategy: # BB - MACD
+        # MACD
+        if 5 in self.strategy and prev_row['MACD'] < prev_row['MACD_signal'] and row['MACD'] >= row['MACD_signal']:
             self.buy(row, strategy = 5)
-        if 6 in self.strategy: # OBV - RSI - BB
+        # BB
+        if 5 in self.strategy and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
             self.buy(row, strategy = 6)
-        if 7 in self.strategy: # Ichimoku
+        # OBV - RSI - BB
+        if 6 in self.strategy and row['OBV_signal'] > 0.6 and row['RSI'] > 30 and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
             self.buy(row, strategy = 7)
+        # Ichimoku
+        if 7 in self.strategy:
+            self.buy(row, strategy = 8)
 
     def check_orders(self, close, date):
         '''

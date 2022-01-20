@@ -34,7 +34,8 @@ class DataProcessor:
         for df in self.crypto_df:
             if self.cryptos_names[i] in cryptos_names: # if crypto is already loaded
                 print('Dropping columns')
-                df.drop(columns=['symbol', 'unix', 'Volume ETH'], inplace = True)
+                df.drop(columns=['symbol', 'unix'], inplace = True)
+                df.drop(df.columns[7], axis=1, inplace = True)
                 print('Dropping Nan')
                 df.dropna(inplace =True)
                 print('Changing date format')
@@ -83,8 +84,8 @@ class DataProcessor:
                 df['SMA 200'] = fe.get_sma(df, 200)
                 df['upper_b_band'] = fe.get_bollinger_bands(df, 14, 2)[0]
                 df['lower_b_band'] = fe.get_bollinger_bands(df, 14, 2)[1]
-                df['EMA_8'] = fe.get_ema(df, 8)
-                df['EMA_20'] = fe.get_ema(df, 20)
+                df['EMA_50'] = fe.get_ema(df, 50)
+                df['EMA_200'] = fe.get_ema(df, 200)
                 df['MACD'] = fe.get_macd(df, 26, 12, 9)[0]
                 df['MACD_signal'] = fe.get_macd(df, 26, 12, 9)[1]
                 df['MACD_histo'] = fe.get_macd(df, 26, 12, 9)[2]
@@ -96,6 +97,8 @@ class DataProcessor:
                 df['plus_di'] = fe.get_adx(df, 14)[0]
                 df['minus_di'] = fe.get_adx(df, 14)[1]
                 df['OBV'] = fe.get_obv(df)
+                df['OBV_diff'] = fe.get_obv_diff(df)
+                df['OBV_signal'] = fe.get_obv_signal(df['OBV_diff'], 20)
                 df['I_tenkan_sen'] = fe.get_ichimoku(df)[0]
                 df['I_kijun_sen'] = fe.get_ichimoku(df)[1]
                 df['I_senkou_span_a'] = fe.get_ichimoku(df)[2]
@@ -105,6 +108,7 @@ class DataProcessor:
             i+=1
 
     def feature_selection(self, crypto_name): # Feature selection method
+        self.crypto_df.drop(columns=['SO_D', 'OBV_diff', 'plus_di', 'minus_di'], inplace=True)
         '''
         Eliminates features not relevant or highly correlated to others
         '''

@@ -113,7 +113,31 @@ class FeaturesExtractor:
         return df['close'].ewm(span = period, adjust = False).mean()
 
     def get_obv(self, df):
-        return np.sign(df['close'].diff()) * df['Volume USDT'].fillna(0).cumsum()
+        #Calculate the On Balance Volume (OBV)
+        obv = []
+        obv.append(0)
+
+        #Loop through the data set (close price) from the second row (index 1) to the end of the data set
+        for i in range(1, len(df['close'])):
+            j = i-1
+            if df.iloc[i].loc['close'] > df.iloc[j].loc['close']:
+                obv.append(obv[-1] + df['Volume USDT'].iloc[i])
+            elif df.iloc[i].loc['close'] < df.iloc[j].loc['close']:
+                obv.append(obv[-1] - df['Volume USDT'].iloc[i])
+            else:
+                obv.append(obv[-1])
+        return obv
+
+    def get_obv_diff(self, df):
+        return df['OBV'].diff().fillna(df['OBV'])
+
+    def get_obv_signal(self, obv, period):
+        '''
+        Returns the mean of differences in the past periods
+        '''
+        signal = obv.rolling(period).mean()
+        signal_norm=(signal-signal.min())/(signal.max()-signal.min())
+        return signal_norm
 
     def get_ichimoku(self, df):
         # Tenkan-sen (Conversion Line): (9-period high + 9-period low)/2))
