@@ -22,7 +22,7 @@ class DataProcessor:
             print('Loading...', crypto_name)
             path = '../Datasets/' + crypto_name + '.csv'
             df = pd.read_csv(path, header=[1])
-            print('Reversing order')
+            #print('Reversing order')
             df = df.iloc[::-1].reset_index(drop=True)
             self.crypto_df.append(df)
 
@@ -33,12 +33,12 @@ class DataProcessor:
         i = 0
         for df in self.crypto_df:
             if self.cryptos_names[i] in cryptos_names: # if crypto is already loaded
-                print('Dropping columns')
+                #print('Dropping columns')
                 df.drop(columns=['symbol', 'unix'], inplace = True)
                 df.drop(df.columns[7], axis=1, inplace = True)
-                print('Dropping Nan')
+                #print('Dropping Nan')
                 df.dropna(inplace =True)
-                print('Changing date format')
+                #print('Changing date format')
                 df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d %H:%M:%S')
             i+=1
 

@@ -1,10 +1,14 @@
 # Load data, select strategy, loop over data calling orders in crypto utils tradeops class
 
+from numpy.core.numeric import normalize_axis_tuple
 import pandas as pd
 
 class TradingSimulator:
+    '''
+    Simulator for calssic solutions
+    '''
 
-    def __init__(self, processor, crypto_name, strategy = [6], stop_loss_take_profit_strategy = 2, balance = 10000, loss_allowed=0.1, take_profit_mul = 3): # Constructor
+    def __init__(self, processor, crypto_name, strategy = [6], stop_loss_take_profit_strategy = 2, balance = 10000, loss_allowed=0.1, take_profit_mul = 3, log = False): # Constructor
         '''
         Simulator to calculate final result in balance after following a strategy
         processor: Crypto processor
@@ -20,6 +24,7 @@ class TradingSimulator:
         self.strategy = strategy
         self.stop_loss_take_profit_strategy = stop_loss_take_profit_strategy
         self.balance = balance
+        self.initial_balance = balance
         self.df = self.init_crypto()
         column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
         self.orders = pd.DataFrame(columns = column_names)
@@ -28,6 +33,7 @@ class TradingSimulator:
         self.total_invest = 0
         self.orders_won = 0
         self.total_orders = 0
+        self.log = log
     
     def init_crypto(self):
         '''
@@ -53,6 +59,7 @@ class TradingSimulator:
         print('Balance:', self.balance, '€')
         print('Orders won:', self.orders_won)
         print('Orders lost:', self.total_orders - self.orders_won)
+        print('Profit:', (self.balance-self.initial_balance)/self.total_invest, '\n')
 
     def trigger_strategy(self, prev_row ,row):
         '''
@@ -74,13 +81,13 @@ class TradingSimulator:
         if 5 in self.strategy and prev_row['MACD'] < prev_row['MACD_signal'] and row['MACD'] >= row['MACD_signal']:
             self.buy(row, strategy = 5)
         # BB
-        if 5 in self.strategy and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
+        if 6 in self.strategy and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
             self.buy(row, strategy = 6)
         # OBV - RSI - BB
-        if 6 in self.strategy and row['OBV_signal'] > 0.6 and row['RSI'] > 30 and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
+        if 7 in self.strategy and row['OBV_signal'] > 0.6 and row['RSI'] > 30 and prev_row['close'] <= prev_row['lower_b_band'] and row['close'] > row['lower_b_band']:
             self.buy(row, strategy = 7)
         # Ichimoku
-        if 7 in self.strategy:
+        if 8 in self.strategy :
             self.buy(row, strategy = 8)
 
     def check_orders(self, close, date):
@@ -109,7 +116,7 @@ class TradingSimulator:
             self.orders = self.orders.append(new_order, ignore_index=True)
             self.total_invest += 100
             
-            print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, ' | ATR:', row['ATR'], '|||')
+            if self.log: print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, ' | ATR:', row['ATR'], '|||')
         
         elif self.stop_loss_take_profit_strategy == 2: # Trailing
             stop_loss = row['close']-self.loss_allowed*row['close']
@@ -118,7 +125,7 @@ class TradingSimulator:
             self.orders = self.orders.append(new_order, ignore_index=True)
             self.total_invest += 100
             
-            print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, '|||')
+            if self.log: print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, '|||')
 
         elif self.stop_loss_take_profit_strategy == 3: # % Loss - Profit
             stop_loss = row['close']-self.loss_allowed*row['close']
@@ -127,7 +134,7 @@ class TradingSimulator:
             self.orders = self.orders.append(new_order, ignore_index=True)
             self.total_invest += 100
             
-            print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, '|||')
+            if self.log: print('Buy on', row['date'],'||| Strat', strategy,' Close:', row['close'], '| Stop-loss:', stop_loss, '| Take-profit:', take_profit, '|||')
 
         else: # Sup - Res levels
             new_order = {'close_entry':row['close'], 'total(€)':100, 'stop_loss':row['Sup 50'], 'take_profit':row['Res 50']}
@@ -143,4 +150,39 @@ class TradingSimulator:
         self.total_orders += 1
         self.balance += profit * order['total(€)']
         self.orders.drop(index, inplace=True) # Eliminate order from orders
-        print('Sell order', index, 'on', date,' ||| Close:', close,'| Entry', entry,'| Profit:', profit,'| Balance:', self.balance, '|||')
+        if self.log: print('Sell order', index, 'on', date,' ||| Close:', close,'| Entry', entry,'| Profit:', profit,'| Balance:', self.balance, '|||')
+
+class DLSimulator:
+    '''
+    Simulator for DL solutions
+
+    Make predictions and decide stock operations guideed by the predictions
+    '''
+
+    def __init__(self, period, model):
+        '''
+        period: period between re-training model
+        '''
+        self.period = period
+        self.model = model
+
+    def make_predictions(self):
+        '''
+        Fill old predicted data with new data
+        if model is old:
+            Build or load model
+            Compile if needed
+            Train model
+            Save model
+            
+            Predict next N steps ahead
+        '''
+        pass
+
+    def simulate(self):
+        '''
+        For each N periods
+            Make predictions
+            Validate old operations
+            Make new stock operations
+        '''
