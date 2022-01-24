@@ -9,24 +9,29 @@ class CryptoLSTM:
         - Difference open-hig
         - Result (0, 1)
     '''
-    def __init__(self, crypto_name, processor, y_value_selector = 0, periods_to_predict = 20):
-        processor.load_data()
-        processor.clean_data(crypto_name)
-        processor.feature_extraction(crypto_name)
-        processor.feature_selection(crypto_name)
-        self.df = processor.get_data(crypto_name)
+    def __init__(self, df, y_value_selector = 0, periods_to_predict = 20):
+        self.df = df
         self.y_value_selector = y_value_selector
         self.periods_to_predict = periods_to_predict
+        self.model = 0
 
     def build(self):
         '''
         Build LSTM model
         '''
+
+        
         pass
 
     def compile(self):
         '''
         Complie LSTM model
+        '''
+        pass
+
+    def train(self):
+        '''
+        Train LSTM model
         '''
         pass
 
@@ -36,7 +41,13 @@ class CryptoLSTM:
         '''
         pass
 
-    def predict(self, model):
+    def predict(self, model, df):
         '''
         Predict periods_to_predict based on current model
         '''
+    
+    def get_model(self):
+        return self.model
+
+    def set_dataset(self, df):
+        self.df = df.copy()

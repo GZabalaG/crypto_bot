@@ -108,10 +108,15 @@ class DataProcessor:
             i+=1
 
     def feature_selection(self, crypto_name): # Feature selection method
-        self.crypto_df.drop(columns=['SO_D', 'OBV_diff', 'plus_di', 'minus_di'], inplace=True)
         '''
         Eliminates features not relevant or highly correlated to others
         '''
+        i = 0
+        for df in self.crypto_df:
+            if self.cryptos_names[i] in crypto_name: # if crypto is already loaded
+                #print('Dropping columns')
+                df.drop(columns=['SO_D', 'OBV_diff', 'plus_di', 'minus_di'], inplace = True)
+            i+=1
 
     def detect_anomalies(self, crypto_name): # Anomaly detection method
         '''

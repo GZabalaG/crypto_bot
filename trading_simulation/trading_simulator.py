@@ -2,6 +2,7 @@
 
 from numpy.core.numeric import normalize_axis_tuple
 import pandas as pd
+from dl_solutions.lstm import CryptoLSTM
 
 class TradingSimulator:
     '''
@@ -159,30 +160,59 @@ class DLSimulator:
     Make predictions and decide stock operations guideed by the predictions
     '''
 
-    def __init__(self, period, model):
+    def __init__(self, processor, crypto_name, periods_to_retraining, periods_to_predict, model):
         '''
         period: period between re-training model
         '''
-        self.period = period
+        self.periods_to_retraining = periods_to_retraining
+        self.periods_to_predict = periods_to_predict
         self.model = model
+        processor.load_data()
+        processor.clean_data(crypto_name)
+        processor.feature_extraction(crypto_name)
+        processor.feature_selection(crypto_name)
+        self.df = processor.get_data(crypto_name)
 
-    def make_predictions(self):
+        column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
+        self.orders = pd.DataFrame(columns = column_names)
+
+    def re_train_model(self, index):
+        '''
+        Train new model based on df
+        '''
+        df_to_train = self.df[:index].copy() # get only data processed by simulation
+        self.model = CryptoLSTM(df_to_train, 0, 20)
+        self.model.build()
+        self.model.compile()
+        self.model.train()
+        
+    def make_predictions(self, index):
         '''
         Fill old predicted data with new data
-        if model is old:
-            Build or load model
-            Compile if needed
-            Train model
-            Save model
-            
-            Predict next N steps ahead
+        Predict next N steps ahead
         '''
-        pass
+        df_to_predict = self.df[:index].copy() # get only data processed by simulation
+        return self.model.predict(df_to_predict, self.model.get_model())
 
     def simulate(self):
         '''
+        For each M periods
+            re train model
+            re fill predicted data with real one
         For each N periods
             Make predictions
             Validate old operations
             Make new stock operations
         '''
+        for index, row in self.df.iterrows():
+            if index % self.periods_to_retraining == 0 and index > self.periods_to_retraining:
+                self.re_train_model(index)
+            if index % self.periods_to_predict == 0 and index > self.periods_to_retraining:
+                predictions = self.make_predictions(index)
+                self.validate_and_make_orders(predictions)
+    
+    def validate_and_make_orders(self, predictions):
+        '''
+        Algorithm to decide orders based on new predictions
+        '''
+        pass
