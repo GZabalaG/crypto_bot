@@ -172,3 +172,6 @@ class FeaturesExtractor:
         true_range = np.max(ranges, axis=1)
 
         return true_range.rolling(period).sum()/period
+
+    def get_close_shift(self, df, shift):
+        return df['close'].shift(periods = shift)

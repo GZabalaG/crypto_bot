@@ -3,6 +3,7 @@
 from numpy.core.numeric import normalize_axis_tuple
 import pandas as pd
 from dl_solutions.lstm import CryptoLSTM
+from data_processor.data_processing import DataProcessor
 
 class TradingSimulator:
     '''
@@ -160,18 +161,22 @@ class DLSimulator:
     Make predictions and decide stock operations guideed by the predictions
     '''
 
-    def __init__(self, processor, crypto_name, periods_to_retraining, periods_to_predict, model):
+    def __init__(self, processor, crypto_name, periods_to_retraining, periods_to_predict, model_selector):
         '''
         period: period between re-training model
         '''
         self.periods_to_retraining = periods_to_retraining
         self.periods_to_predict = periods_to_predict
-        self.model = model
+        self.model_selector = model_selector
         processor.load_data()
         processor.clean_data(crypto_name)
-        processor.feature_extraction(crypto_name)
-        processor.feature_selection(crypto_name)
+        processor.feature_extraction(crypto_name, 1)
+        processor.lstm_processing(crypto_name)
         self.df = processor.get_data(crypto_name)
+        # Call method to prepare data. x column with x previous values to preduct x+1 value
+        # This method can take some extra features as volume, tradecount, differences or result
+
+        self.model = 0
 
         column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
         self.orders = pd.DataFrame(columns = column_names)
@@ -180,8 +185,14 @@ class DLSimulator:
         '''
         Train new model based on df
         '''
-        df_to_train = self.df[:index].copy() # get only data processed by simulation
-        self.model = CryptoLSTM(df_to_train, 0, 20)
+        # Get only data processed by simulation
+        df_to_train = self.df[:index].copy() 
+        
+        if(self.model_selector == 'lstm'):
+            self.model = CryptoLSTM(df_to_train, 20)
+        elif(self.model_selector == 'tcn'):
+            pass
+
         self.model.build()
         self.model.compile()
         self.model.train()
@@ -192,7 +203,7 @@ class DLSimulator:
         Predict next N steps ahead
         '''
         df_to_predict = self.df[:index].copy() # get only data processed by simulation
-        return self.model.predict(df_to_predict, self.model.get_model())
+        return self.model.predict(df_to_predict)
 
     def simulate(self):
         '''
@@ -205,10 +216,13 @@ class DLSimulator:
             Make new stock operations
         '''
         for index, row in self.df.iterrows():
-            if index % self.periods_to_retraining == 0 and index > self.periods_to_retraining:
+            if index % self.periods_to_retraining == 0 and index >= self.periods_to_retraining:
+                print('Training model at:', index)
                 self.re_train_model(index)
             if index % self.periods_to_predict == 0 and index > self.periods_to_retraining:
+                print('Making predictions at:', index)
                 predictions = self.make_predictions(index)
+                print('Validating and making orders at:', index)
                 self.validate_and_make_orders(predictions)
     
     def validate_and_make_orders(self, predictions):
