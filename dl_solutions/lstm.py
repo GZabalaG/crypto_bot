@@ -21,6 +21,12 @@ class CryptoLSTM:
         self.df = df
         self.periods_to_predict = periods_to_predict
         self.model = 0
+    
+    def normalize(self, strat):
+        '''
+        We have to normalize all columns. Different strategies needed
+        '''
+        pass
 
     def train_test_split(self):
         self.train_X, self.train_y, self.test_X, self.test_y = 0
@@ -29,7 +35,8 @@ class CryptoLSTM:
         '''
         Build LSTM model
         '''
-        ...
+        
+        self.normalize(0)
         self.train_test_split()
         # design network
         self.model = Sequential()

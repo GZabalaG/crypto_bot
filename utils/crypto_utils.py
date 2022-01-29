@@ -8,7 +8,7 @@ class FeaturesExtractor:
     def __init__(self): # Constructor
         pass
 
-    def high_low(self, row):
+    def open_close(self, row):
         '''
         Returns the period high-low difference result
         '''
@@ -173,5 +173,5 @@ class FeaturesExtractor:
 
         return true_range.rolling(period).sum()/period
 
-    def get_close_shift(self, df, shift):
-        return df['close'].shift(periods = shift)
+    def get_shift(self, df, column, shift):
+        return df[column].shift(periods = shift)

@@ -1,6 +1,5 @@
 # Load data, select strategy, loop over data calling orders in crypto utils tradeops class
 
-from numpy.core.numeric import normalize_axis_tuple
 import pandas as pd
 from dl_solutions.lstm import CryptoLSTM
 from data_processor.data_processing import DataProcessor
@@ -171,15 +170,15 @@ class DLSimulator:
         processor.load_data()
         processor.clean_data(crypto_name)
         processor.feature_extraction(crypto_name, 1)
-        processor.lstm_processing(crypto_name)
-        self.df = processor.get_data(crypto_name)
-        # Call method to prepare data. x column with x previous values to preduct x+1 value
-        # This method can take some extra features as volume, tradecount, differences or result
+        #columns = ['close','Volume USDT' ,'Result']
+        columns = ['close']
+        self.df = processor.feature_selection(crypto_name, columns) # de aqui ya sale un df con X columns y target column en la ultima column
+        self.df = processor.lstm_processing(self.df, 'close', 1, 1, 1) # columnas con shift
 
         self.model = 0
 
-        column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
-        self.orders = pd.DataFrame(columns = column_names)
+        order_column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
+        self.orders = pd.DataFrame(columns = order_column_names)
 
     def re_train_model(self, index):
         '''
@@ -192,7 +191,7 @@ class DLSimulator:
             self.model = CryptoLSTM(df_to_train, 20)
         elif(self.model_selector == 'tcn'):
             pass
-
+        
         self.model.build()
         self.model.compile()
         self.model.train()
