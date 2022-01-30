@@ -29,7 +29,18 @@ class CryptoLSTM:
         pass
 
     def train_test_split(self):
-        self.train_X, self.train_y, self.test_X, self.test_y = 0
+        # split into train and test sets
+        values = self.df.values
+        n_train_hours = 700
+        train = values[:n_train_hours, :]
+        test = values[n_train_hours:, :]
+        # split into input and outputs
+        self.train_X, self.train_y = train[:, :-1], train[:, -1]
+        self.test_X, self.test_y = test[:, :-1], test[:, -1]
+        # reshape input to be 3D [samples, timesteps, features]
+        self.train_X = self.train_X.reshape((self.train_X.shape[0], 1, self.train_X.shape[1]))
+        self.ftest_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
+        print(self.train_X.shape, self.train_y.shape, self.test_X.shape, self.test_y.shape)
 
     def build(self):
         '''

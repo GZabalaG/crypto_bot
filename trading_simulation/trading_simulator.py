@@ -169,11 +169,11 @@ class DLSimulator:
         self.model_selector = model_selector
         processor.load_data()
         processor.clean_data(crypto_name)
-        processor.feature_extraction(crypto_name, 1)
+        processor.feature_extraction(crypto_name)
         #columns = ['close','Volume USDT' ,'Result']
         columns = ['close']
         self.df = processor.feature_selection(crypto_name, columns) # de aqui ya sale un df con X columns y target column en la ultima column
-        self.df = processor.lstm_processing(self.df, 'close', 1, 1, 1) # columnas con shift
+        self.df = processor.lstm_processing(self.df, 'close', 1, 1) # columnas con shift
 
         self.model = 0
 
@@ -194,7 +194,7 @@ class DLSimulator:
         
         self.model.build()
         self.model.compile()
-        self.model.train()
+        #self.model.train()
         
     def make_predictions(self, index):
         '''
