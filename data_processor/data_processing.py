@@ -151,7 +151,8 @@ class DataProcessor:
                 X_col = self.fe.get_shift(crypto_df, f'{col}', i)
                 X_col = pd.Series.to_frame(X_col).rename(columns={col: aux_column_name})
                 X_columns = pd.concat([X_columns, X_col], axis=1)
-        return pd.concat([X_columns, target_column], axis=1)
+                
+        return pd.concat([X_columns, target_column], axis=1).iloc[prev_periods-1:-pred_periods]
 
 
     def detect_anomalies(self, crypto_name): # Anomaly detection method

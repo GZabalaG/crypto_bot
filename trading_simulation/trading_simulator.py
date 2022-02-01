@@ -160,12 +160,14 @@ class DLSimulator:
     Make predictions and decide stock operations guideed by the predictions
     '''
 
-    def __init__(self, processor, crypto_name, periods_to_retraining, periods_to_predict, model_selector):
+    def __init__(self, processor, crypto_name, periods_to_retraining, periods_to_predict, prev_periods, pred_periods, model_selector):
         '''
         period: period between re-training model
         '''
         self.periods_to_retraining = periods_to_retraining
         self.periods_to_predict = periods_to_predict
+        self.prev_periods = prev_periods
+        self.pred_periods = pred_periods
         self.model_selector = model_selector
         processor.load_data()
         processor.clean_data(crypto_name)
@@ -173,12 +175,15 @@ class DLSimulator:
         #columns = ['close','Volume USDT' ,'Result']
         columns = ['close']
         self.df = processor.feature_selection(crypto_name, columns) # de aqui ya sale un df con X columns y target column en la ultima column
-        self.df = processor.lstm_processing(self.df, 'close', 1, 1) # columnas con shift
+        self.df = processor.lstm_processing(self.df, 'close', prev_periods, pred_periods) # columnas con shift
 
         self.model = 0
 
         order_column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
         self.orders = pd.DataFrame(columns = order_column_names)
+
+    def get_df(self):
+        return self.df
 
     def re_train_model(self, index):
         '''
@@ -194,12 +199,14 @@ class DLSimulator:
         
         self.model.build()
         self.model.compile()
-        #self.model.train()
+        self.model.train()
         
     def make_predictions(self, index):
         '''
         Fill old predicted data with new data
         Predict next N steps ahead
+
+        We take in account pred_periods so predict() return the today period + pred_periods prediction
         '''
         df_to_predict = self.df[:index].copy() # get only data processed by simulation
         return self.model.predict(df_to_predict)

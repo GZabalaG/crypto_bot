@@ -1,6 +1,8 @@
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
+import pandas as pd
+import numpy as np
 
 class CryptoLSTM:
     '''
@@ -31,16 +33,16 @@ class CryptoLSTM:
     def train_test_split(self):
         # split into train and test sets
         values = self.df.values
-        n_train_hours = 700
-        train = values[:n_train_hours, :]
-        test = values[n_train_hours:, :]
+        n_train_days = 850
+        train = values[:n_train_days, :]
+        test = values[n_train_days:, :]
         # split into input and outputs
         self.train_X, self.train_y = train[:, :-1], train[:, -1]
         self.test_X, self.test_y = test[:, :-1], test[:, -1]
         # reshape input to be 3D [samples, timesteps, features]
         self.train_X = self.train_X.reshape((self.train_X.shape[0], 1, self.train_X.shape[1]))
-        self.ftest_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
-        print(self.train_X.shape, self.train_y.shape, self.test_X.shape, self.test_y.shape)
+        self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
+        print('Input shape:', self.train_X.shape, self.train_y.shape, self.test_X.shape, self.test_y.shape)
 
     def build(self):
         '''
@@ -77,6 +79,22 @@ class CryptoLSTM:
         '''
         Predict periods_to_predict based on model
         '''
+        ...
+        # make a prediction
+        yhat = self.model.predict(self.test_X)
+        test_X = self.test_X.reshape((self.test_X.shape[0], self.test_X.shape[2]))
+        # invert scaling for forecast
+        inv_yhat = pd.concatenate((yhat, test_X[:, 1:]), axis=1)
+        #inv_yhat = scaler.inverse_transform(inv_yhat)
+        inv_yhat = inv_yhat[:,0]
+        # invert scaling for actual
+        test_y = self.test_y.reshape((len(self.test_y), 1))
+        inv_y = pd.concatenate((test_y, test_X[:, 1:]), axis=1)
+        #inv_y = scaler.inverse_transform(inv_y)
+        inv_y = inv_y[:,0]
+        # calculate RMSE
+        rmse = pd.sqrt(pd.mean_squared_error(inv_y, inv_yhat))
+        print('Test RMSE: %.3f' % rmse)
     
     def get_model(self):
         return self.model
