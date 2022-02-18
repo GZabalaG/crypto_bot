@@ -3,6 +3,7 @@
 
 import pandas as pd
 from pandas.core.frame import DataFrame
+import datetime
 from utils.crypto_utils import FeaturesExtractor
 
 
@@ -107,6 +108,7 @@ class DataProcessor:
                 df['I_chikou_span'] = self.fe.get_ichimoku(df)[4]
                 df['ATR'] = self.fe.get_atr(df, 14)
                 df['Result'] = df.apply(lambda row: self.fe.open_close(row), axis=1)
+                df['weekday'] = df['date'].dt.dayofweek
             i+=1
 
     def feature_selection(self, crypto_name, fields): # Feature selection method
@@ -144,14 +146,12 @@ class DataProcessor:
         for i in reversed(range(prev_periods)):
             # Create df with prev_periods columns
             # We'll get total of prev_periods rows pivoted to columns stsrting from the actual one in the loop
-            print('Prev period:', i)
             for col in crypto_df.columns:
                 aux_column_name = f'{col}_{i}'
-                print('Converting', col, 'to', aux_column_name)
                 X_col = self.fe.get_shift(crypto_df, f'{col}', i)
                 X_col = pd.Series.to_frame(X_col).rename(columns={col: aux_column_name})
                 X_columns = pd.concat([X_columns, X_col], axis=1)
-                
+
         return pd.concat([X_columns, target_column], axis=1).iloc[prev_periods-1:-pred_periods]
 
 
