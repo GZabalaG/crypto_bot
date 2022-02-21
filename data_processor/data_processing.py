@@ -108,7 +108,23 @@ class DataProcessor:
                 df['I_chikou_span'] = self.fe.get_ichimoku(df)[4]
                 df['ATR'] = self.fe.get_atr(df, 14)
                 df['Result'] = df.apply(lambda row: self.fe.open_close(row), axis=1)
-                df['weekday'] = df['date'].dt.dayofweek
+                df['weekday_num'] = df['date'].dt.dayofweek
+                df.loc[df['weekday_num'] == 0, 'weekday'] = 'mon'
+                df.loc[df['weekday_num'] == 1, 'weekday'] = 'tue'
+                df.loc[df['weekday_num'] == 2, 'weekday'] = 'wed'
+                df.loc[df['weekday_num'] == 3, 'weekday'] = 'thu'
+                df.loc[df['weekday_num'] == 4, 'weekday'] = 'fri'
+                df.loc[df['weekday_num'] == 5, 'weekday'] = 'sat'
+                df.loc[df['weekday_num'] == 6, 'weekday'] = 'sun'
+                one_hot = pd.get_dummies(df['weekday'])
+                df['mon'] = one_hot['mon']
+                df['tue'] = one_hot['tue']
+                df['wed'] = one_hot['wed']
+                df['thu'] = one_hot['thu']
+                df['fri'] = one_hot['fri']
+                df['sat'] = one_hot['sat']
+                df['sun'] = one_hot['sun']
+
             i+=1
 
     def feature_selection(self, crypto_name, fields): # Feature selection method

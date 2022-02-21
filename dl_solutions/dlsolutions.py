@@ -27,11 +27,21 @@ class CryptoDLSolutions:
         self.model = 0
         self.min = df.max().max()
         self.max = df.min().min()
+        self.mins = []
+        self.maxs = []
+        self.min_by_col = []
+        self.max_by_col = []
+        for col in df:
+            min = df[col].min()
+            max = df[col].max()
+            self.min_by_col.append(min)
+            self.max_by_col.append(max)
         self.norm_strat = norm_strat
         self.strat = strat
         self.layers = layers
         self.batch_size = batch_size
         self.epochs = epochs
+        self.df_norm_min_max_by_cols = np.zeros((2, len(df.columns)))
     
     def normalize(self, df_to_norm):
         '''
@@ -48,6 +58,20 @@ class CryptoDLSolutions:
         elif self.norm_strat == 1:
             self.sc = MinMaxScaler(feature_range = (0, 1))
             return self.sc.fit_transform(df_to_norm)
+        elif self.norm_strat == 2:
+            #TODO NORMALIZACION POR MIN MAX DEL DATASET COMPLETO POR COLUMNAS
+            # Crear df con min max por columnas (extraer nombres columnas del df de entrada)
+            # Por cada columna aplicar minmax con df de min max (iterar sobre df de min max)
+            i = 0
+            norm = []
+            transpose = df_to_norm.transpose()
+            for col in transpose:
+                norm_col = (col - self.min_by_col[i])/(self.max_by_col[i] - self.min_by_col[i])
+                norm.append(norm_col)
+                i+=1
+                
+            norm = np.asarray(norm)
+            return norm.transpose()
 
     def reverse_norm(self, df_to_norm):
         '''
@@ -63,11 +87,23 @@ class CryptoDLSolutions:
             return reverse_norm
         elif self.norm_strat == 1:
             return self.sc.inverse_transform(df_to_norm)
+        elif self.norm_strat == 2:
+            #TODO NORMALIZACION POR MIN MAX DEL DATASET COMPLETO POR COLUMNAS
+            norm = []
+            transpose = df_to_norm.transpose()
+            i = 0
+            for col in transpose:
+                reverse_norm_col = col * (self.max_by_col[i] - self.min_by_col[i]) + self.min_by_col[i]
+                norm.append(reverse_norm_col)
+                i+=1
+            norm = np.asarray(norm)
+            return norm.transpose()
 
     def train_test_split(self):
         # split into train and test sets
         values = self.df.values
-        n_train_days = int(len(values)*0.95)
+        train_frac = 1
+        n_train_days = int(len(values)*train_frac)
         train = self.normalize(values[:n_train_days, :])
         test = self.normalize(values[n_train_days:, :])
 
@@ -97,7 +133,6 @@ class CryptoDLSolutions:
         '''
 
         self.train_test_split()
-
         # design network
         self.model = Sequential()
         self.model.add(LSTM(50, return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
@@ -135,7 +170,7 @@ class CryptoDLSolutions:
         val_y = self.train_y[n_val_days:]
 
 
-        ###### CREATE CALLBACKS
+        ###### TODO CREATE CALLBACKS
         callbacks = 0
 
         self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks)
@@ -144,7 +179,6 @@ class CryptoDLSolutions:
         '''
         Return prediciton for test set
         '''
-        ## habia tres puntos???
         # make a prediction
         print('testx',self.test_X.shape)
         print(self.test_X)
@@ -154,6 +188,7 @@ class CryptoDLSolutions:
         # invert scaling for forecast
         inv_preds = np.concatenate((test_X[:, :], preds), axis=1)
         inv_preds = self.reverse_norm(inv_preds)
+        print('test rev norm',inv_preds)
         inv_preds = inv_preds[:,-1]
 
         # invert scaling for actual
