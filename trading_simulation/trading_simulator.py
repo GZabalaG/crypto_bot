@@ -160,7 +160,7 @@ class DLSimulator:
     Make predictions and decide stock operations guideed by the predictions
     '''
 
-    def __init__(self, processor, crypto_name, periods_to_retraining, prev_periods, pred_periods, model_selector, columns):
+    def __init__(self, processor, crypto_name, periods_to_retraining, prev_periods, pred_periods, model_selector, columns, target):
         '''
         periods_to_re...: periods to retrain model
         prev_periods: periodos usados como X
@@ -178,7 +178,7 @@ class DLSimulator:
         #columns = ['close']
         columns = columns
         self.df = processor.feature_selection(crypto_name, columns) # de aqui ya sale un df con X columns y target column en la ultima column
-        self.df = processor.lstm_processing(self.df, columns[-1], prev_periods, pred_periods) # columnas con shift
+        self.df = processor.lstm_processing(self.df, target, prev_periods, pred_periods) # columnas con shift
 
         self.model = 0
 
@@ -196,7 +196,7 @@ class DLSimulator:
         df_to_train = self.df[:index].copy() 
         
         if(self.model_selector == 'lstm'):
-            self.model = CryptoLSTM(df_to_train)
+            self.model = CryptoDLSolutions(df_to_train)
         elif(self.model_selector == 'tcn'):
             pass
         

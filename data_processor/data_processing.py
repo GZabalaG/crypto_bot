@@ -156,7 +156,15 @@ class DataProcessor:
         # For multivariate we myabe use only X1-1, X2-1, X3-1, etc and y column...
 
         # Shift target column by 1
-        target_column = self.fe.get_shift(crypto_df, target, -pred_periods)
+        if target is not None:
+            targets = self.fe.get_shift(crypto_df, target, -pred_periods)
+        else:
+            targets = pd.DataFrame()
+            for col in crypto_df.columns:
+                target_col = self.fe.get_shift(crypto_df, f'{col}', -pred_periods)
+                target_col = pd.Series.to_frame(target_col).rename(columns={col: f'{col}'})
+                targets = pd.concat([targets, target_col], axis=1)
+                
         X_columns = pd.DataFrame()
         X_columns.empty
         for i in reversed(range(prev_periods)):
@@ -168,7 +176,7 @@ class DataProcessor:
                 X_col = pd.Series.to_frame(X_col).rename(columns={col: aux_column_name})
                 X_columns = pd.concat([X_columns, X_col], axis=1)
 
-        return pd.concat([X_columns, target_column], axis=1).iloc[prev_periods-1:-pred_periods]
+        return pd.concat([X_columns, targets], axis=1).iloc[prev_periods-1:-pred_periods]
 
 
     def detect_anomalies(self, crypto_name): # Anomaly detection method

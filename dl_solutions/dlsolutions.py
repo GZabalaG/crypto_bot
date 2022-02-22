@@ -1,5 +1,6 @@
 from keras.layers.core import Activation
 from numpy.core.defchararray import startswith
+from pandas._libs.tslibs import timestamps
 from sklearn.preprocessing import MinMaxScaler
 from keras.models import Sequential
 from keras.layers import LSTM, Dense, Dropout
@@ -19,14 +20,14 @@ class CryptoDLSolutions:
         - Result (0, 1)
         - 
     '''
-    def __init__(self, df, norm_strat, strat, layers, batch_size, epochs):
+    def __init__(self, df, norm_strat, strat, layers, batch_size, epochs, num_timestamps, num_features):
         '''
         y value is referred to the column that represents the model target
         '''
         self.df = df
         self.model = 0
         self.min = df.max().max()
-        self.max = df.min().min()
+        self.max = df.min().min() 
         self.mins = []
         self.maxs = []
         self.min_by_col = []
@@ -42,6 +43,11 @@ class CryptoDLSolutions:
         self.batch_size = batch_size
         self.epochs = epochs
         self.df_norm_min_max_by_cols = np.zeros((2, len(df.columns)))
+        self.num_timestamps = num_timestamps
+        if self.num_timestamps is None:
+            self.num_features = 1
+        else:
+            self.num_features = num_features
     
     def normalize(self, df_to_norm):
         '''
@@ -108,19 +114,31 @@ class CryptoDLSolutions:
         test = self.normalize(values[n_train_days:, :])
 
         # split into input and outputs
-        self.train_X, self.train_y = train[:, :-1], train[:, -1]
-        self.test_X, self.test_y = test[:, :-1], test[:, -1]
+        self.train_X, self.train_y = train[:, :-self.num_features], train[:, -self.num_features:]
+        self.test_X, self.test_y = test[:, :-self.num_features], test[:, -self.num_features:]
 
         # reshape input to be 3D [samples, timesteps, features]
-        self.train_X = self.train_X.reshape((self.train_X.shape[0], 1, self.train_X.shape[1]))
-        self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
+        # If timestamps is None we're defining timestamps as features so the whole row represents the features*timestamps
+        if self.num_timestamps is None:
+            self.train_X = self.train_X.reshape((self.train_X.shape[0], 1, self.train_X.shape[1]))
+            self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
+        else:
+            self.train_X = self.train_X.reshape((self.train_X.shape[0], self.num_timestamps, self.num_features))
+            self.test_X = self.test_X.reshape((self.test_X.shape[0], self.num_timestamps, self.num_features))
+            self.train_y = self.train_y.reshape((self.train_y.shape[0], self.num_features))
+            self.test_y = self.test_y.reshape((self.test_y.shape[0], self.num_features))
+
         print('Input shape:', self.train_X.shape, self.train_y.shape, self.test_X.shape, self.test_y.shape)
 
         
     def set_test(self, test_df):
         test = self.normalize(test_df.values)
-        self.test_X, self.test_y = test[:, :-1], test[:, -1]
-        self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
+        self.test_X, self.test_y = test[:, :-self.num_features], test[:, -self.num_features:]
+
+        if self.num_timestamps is None:
+            self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
+        else:
+            self.test_X = self.test_X.reshape((self.test_X.shape[0], self.num_timestamps, self.num_features))
 
     def build(self):
         '''
@@ -151,13 +169,13 @@ class CryptoDLSolutions:
 
         if self.strat == 0:
             # Adding the output layer
-            self.model.add(Dense(units = 1, activation='sigmoid'))
+            self.model.add(Dense(units = 4, activation='sigmoid'))
             # Compile
             self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
         
         elif self.strat == 1:
             # Adding the output layer
-            self.model.add(Dense(units = 1, activation='relu'))
+            self.model.add(Dense(units = 4, activation='relu'))
             # Compile
             self.model.compile(loss='mse', optimizer='adam')
 
@@ -181,21 +199,22 @@ class CryptoDLSolutions:
         '''
         # make a prediction
         print('testx',self.test_X.shape)
-        print(self.test_X)
         preds = self.model.predict(self.test_X)
-        test_X = self.test_X.reshape((self.test_X.shape[0], self.test_X.shape[2]))
+        test_X = self.test_X.reshape((self.test_X.shape[0], self.test_X.shape[1] * self.test_X.shape[2]))
+        print('preds', preds)
 
         # invert scaling for forecast
         inv_preds = np.concatenate((test_X[:, :], preds), axis=1)
         inv_preds = self.reverse_norm(inv_preds)
-        print('test rev norm',inv_preds)
-        inv_preds = inv_preds[:,-1]
+        inv_preds = inv_preds[:,-self.num_features:] # antes -1
+        print('preds rev norm',inv_preds)
 
         # invert scaling for actual
-        test_y = self.test_y.reshape((len(self.test_y), 1))
-        inv_y = np.concatenate((test_X[:, :], test_y), axis=1)
+        # test_y = self.test_y.reshape((len(self.test_y), 1))
+        test_y = self.test_y.reshape((1, self.num_features))
+        inv_y = np.concatenate((test_X[:, :], test_y), axis=1) #antes axis 1
         inv_y = self.reverse_norm(inv_y)
-        inv_y = inv_y[:,-1]
+        inv_y = inv_y[:,-self.num_features:] # antes -1
 
         # calculate RMSE
         rmse = np.sqrt(mean_squared_error(inv_y, inv_preds))
