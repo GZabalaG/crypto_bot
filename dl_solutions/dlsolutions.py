@@ -129,12 +129,12 @@ class CryptoDLSolutions:
             self.test_y = self.test_y.reshape((self.test_y.shape[0], self.num_features))
 
         print('Input shape:', self.train_X.shape, self.train_y.shape, self.test_X.shape, self.test_y.shape)
-
         
     def set_test(self, test_df):
         test = self.normalize(test_df.values)
         self.test_X, self.test_y = test[:, :-self.num_features], test[:, -self.num_features:]
 
+        # If timestamps is None we're defining timestamps as features so the whole row represents the features*timestamps
         if self.num_timestamps is None:
             self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
         else:
@@ -169,13 +169,13 @@ class CryptoDLSolutions:
 
         if self.strat == 0:
             # Adding the output layer
-            self.model.add(Dense(units = 4, activation='sigmoid'))
+            self.model.add(Dense(units = self.num_features, activation='sigmoid'))
             # Compile
             self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
         
         elif self.strat == 1:
             # Adding the output layer
-            self.model.add(Dense(units = 4, activation='relu'))
+            self.model.add(Dense(units = self.num_features, activation='relu'))
             # Compile
             self.model.compile(loss='mse', optimizer='adam')
 
