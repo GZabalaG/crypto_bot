@@ -124,6 +124,11 @@ class DataProcessor:
                 df['fri'] = one_hot['fri']
                 df['sat'] = one_hot['sat']
                 df['sun'] = one_hot['sun']
+                df['operation'] = self.fe.get_operation(df['close'])
+                df['close_diff_5'] = self.fe.get_close_diff(df['close'], 5)
+                df['close_diff_10'] = self.fe.get_close_diff(df['close'], 10)
+                df['close_diff_20'] = self.fe.get_close_diff(df['close'], 20)
+                df['close_diff_50'] = self.fe.get_close_diff(df['close'], 50)
 
             i+=1
 

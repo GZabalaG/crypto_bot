@@ -175,3 +175,19 @@ class FeaturesExtractor:
 
     def get_shift(self, df, column, shift):
         return df[column].shift(periods = shift)
+
+    def get_operation(self, close):
+        '''
+        Creates artificial column with bests operations to make in each point
+        '''
+        #TODO 
+
+        return 0
+
+    def get_close_diff(self, close, period):
+        '''
+        Returns column with diff between close prices separated period periods
+        '''
+        #TODO 
+        
+        return 0

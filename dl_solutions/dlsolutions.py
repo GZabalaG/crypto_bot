@@ -13,23 +13,37 @@ class CryptoDLSolutions:
     LSTM solution for crypto market prediction
 
     Create the model, train and predict next values
-
-    Different y values: it always will be the last column
-        - Close price
-        - Difference open-hig
-        - Result (0, 1)
-        - 
     '''
-    def __init__(self, df, norm_strat, strat, layers, batch_size, epochs, num_timestamps, num_features):
+    def __init__(self, df, norm_strat, strat, layers, neurons, batch_size, epochs, num_timestamps, num_features):
         '''
-        y value is referred to the column that represents the model target
+        df: dataset to use in model
+        norm_strat: normalization strategy
+        strat: model strategy
+        layers: number of model layers
+        neurons: number neurons per layers
+        batch_size: batch size model
+        epoch: training epochs
+        num_timestamps: number of tiemstamps used in lstm model. If null features are pased as timesteps
+        num_features: number of features per timesteps. Equal to 1 if timesteps are null (because is used as number of target features)
         '''
         self.df = df
         self.model = 0
+        self.norm_strat = norm_strat
+        self.strat = strat
+        self.layers = layers
+        self.neurons = neurons
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.num_timestamps = num_timestamps
+        if self.num_timestamps is None:
+            self.num_features = 1 #number of target features
+        else:
+            self.num_features = num_features
+
+        # min max total
         self.min = df.max().max()
-        self.max = df.min().min() 
-        self.mins = []
-        self.maxs = []
+        self.max = df.min().min()
+        # min max by column
         self.min_by_col = []
         self.max_by_col = []
         for col in df:
@@ -37,17 +51,6 @@ class CryptoDLSolutions:
             max = df[col].max()
             self.min_by_col.append(min)
             self.max_by_col.append(max)
-        self.norm_strat = norm_strat
-        self.strat = strat
-        self.layers = layers
-        self.batch_size = batch_size
-        self.epochs = epochs
-        self.df_norm_min_max_by_cols = np.zeros((2, len(df.columns)))
-        self.num_timestamps = num_timestamps
-        if self.num_timestamps is None:
-            self.num_features = 1
-        else:
-            self.num_features = num_features
     
     def normalize(self, df_to_norm):
         '''
@@ -56,7 +59,10 @@ class CryptoDLSolutions:
         Strategies:
             0: normalize over max and min of whole dataset known
             1: normalize minmaxscaler
+            2: minmax by columns considering whole dataset column
         '''
+
+        #TODO create more norm strategies
 
         if self.norm_strat == 0:
             norm = (df_to_norm - self.min) / (self.max - self.min)
@@ -65,7 +71,6 @@ class CryptoDLSolutions:
             self.sc = MinMaxScaler(feature_range = (0, 1))
             return self.sc.fit_transform(df_to_norm)
         elif self.norm_strat == 2:
-            #TODO NORMALIZACION POR MIN MAX DEL DATASET COMPLETO POR COLUMNAS
             # Crear df con min max por columnas (extraer nombres columnas del df de entrada)
             # Por cada columna aplicar minmax con df de min max (iterar sobre df de min max)
             i = 0
@@ -86,15 +91,17 @@ class CryptoDLSolutions:
         Strategies:
             0: normalize over max and min of whole dataset known
             1: normalize minmaxscaler
+            2: minmax by columns considering whole dataset column
         '''
         
+        #TODO create more norm strategies
+
         if self.norm_strat == 0:
             reverse_norm = df_to_norm * (self.max - self.min) + self.min
             return reverse_norm
         elif self.norm_strat == 1:
             return self.sc.inverse_transform(df_to_norm)
         elif self.norm_strat == 2:
-            #TODO NORMALIZACION POR MIN MAX DEL DATASET COMPLETO POR COLUMNAS
             norm = []
             transpose = df_to_norm.transpose()
             i = 0
@@ -113,12 +120,14 @@ class CryptoDLSolutions:
         train = self.normalize(values[:n_train_days, :])
         test = self.normalize(values[n_train_days:, :])
 
-        # split into input and outputs
+        # split into input and outputs. We pass num_features as number of target features. Because timestamps
+        # can be null, this value can be 1 if timestamps are null
         self.train_X, self.train_y = train[:, :-self.num_features], train[:, -self.num_features:]
         self.test_X, self.test_y = test[:, :-self.num_features], test[:, -self.num_features:]
 
         # reshape input to be 3D [samples, timesteps, features]
         # If timestamps is None we're defining timestamps as features so the whole row represents the features*timestamps
+        # We need to reshape 'y' in case of use of timestamps
         if self.num_timestamps is None:
             self.train_X = self.train_X.reshape((self.train_X.shape[0], 1, self.train_X.shape[1]))
             self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
@@ -134,11 +143,14 @@ class CryptoDLSolutions:
         test = self.normalize(test_df.values)
         self.test_X, self.test_y = test[:, :-self.num_features], test[:, -self.num_features:]
 
+        # reshape input to be 3D [samples, timesteps, features]
         # If timestamps is None we're defining timestamps as features so the whole row represents the features*timestamps
+        # We need to reshape 'y' in case of use of timestamps
         if self.num_timestamps is None:
             self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
         else:
             self.test_X = self.test_X.reshape((self.test_X.shape[0], self.num_timestamps, self.num_features))
+            self.test_y = self.test_y.reshape((self.test_y.shape[0], self.num_features))
 
     def build(self):
         '''
@@ -149,6 +161,9 @@ class CryptoDLSolutions:
             1: mse
 
         '''
+
+        #TODO parametrize layers and neurons
+
 
         self.train_test_split()
         # design network
@@ -183,6 +198,7 @@ class CryptoDLSolutions:
         '''
         Train LSTM model
         '''
+        # Creates validation set
         n_val_days = int(len(self.train_X)*0.95)
         val_X = self.train_X[n_val_days:]
         val_y = self.train_y[n_val_days:]
@@ -197,19 +213,19 @@ class CryptoDLSolutions:
         '''
         Return prediciton for test set
         '''
-        # make a prediction
+        # Make a prediction
         print('testx',self.test_X.shape)
         preds = self.model.predict(self.test_X)
         test_X = self.test_X.reshape((self.test_X.shape[0], self.test_X.shape[1] * self.test_X.shape[2]))
         print('preds', preds)
 
-        # invert scaling for forecast
+        # Invert scaling for forecast
         inv_preds = np.concatenate((test_X[:, :], preds), axis=1)
         inv_preds = self.reverse_norm(inv_preds)
         inv_preds = inv_preds[:,-self.num_features:] # antes -1
         print('preds rev norm',inv_preds)
 
-        # invert scaling for actual
+        # Invert scaling for actual
         # test_y = self.test_y.reshape((len(self.test_y), 1))
         test_y = self.test_y.reshape((1, self.num_features))
         inv_y = np.concatenate((test_X[:, :], test_y), axis=1) #antes axis 1
