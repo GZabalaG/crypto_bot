@@ -1,4 +1,5 @@
 from keras.layers.core import Activation
+from keras.layers.recurrent import GRU
 from numpy.core.defchararray import startswith
 from pandas._libs.tslibs import timestamps
 from sklearn.preprocessing import MinMaxScaler
@@ -7,6 +8,7 @@ from keras.layers import LSTM, Dense, Dropout
 import pandas as pd
 import numpy as np
 from sklearn.metrics import mean_squared_error
+from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
 
 class CryptoDLSolutions:
     '''
@@ -14,27 +16,37 @@ class CryptoDLSolutions:
 
     Create the model, train and predict next values
     '''
-    def __init__(self, df, norm_strat, strat, layers, neurons, batch_size, epochs, num_timestamps, num_features):
+    def __init__(self, df, norm_strat, model_sel, layers, neurons, batch_size, epochs, num_timestamps, num_features, activation, loss, metrics, optimizer, initial_learning_rate):
         '''
         df: dataset to use in model
         norm_strat: normalization strategy
-        strat: model strategy
+        strategy: model strategy
+        model_sel: model selection
         layers: number of model layers
         neurons: number neurons per layers
         batch_size: batch size model
         epoch: training epochs
         num_timestamps: number of tiemstamps used in lstm model. If null features are pased as timesteps
         num_features: number of features per timesteps. Equal to 1 if timesteps are null (because is used as number of target features)
+        activation: activation used for last Dense layer
+        loss: loss function
+        metrics: metrics for train evaluation 
+        optimizer: optimaizer used in train
         '''
         self.df = df
         self.model = 0
         self.norm_strat = norm_strat
-        self.strat = strat
         self.layers = layers
         self.neurons = neurons
         self.batch_size = batch_size
         self.epochs = epochs
+        self.model_sel = model_sel
         self.num_timestamps = num_timestamps
+        self.loss = loss
+        self.activation = activation
+        self.metrics = metrics
+        self.optimizer = optimizer
+        self.initial_learning_rate = initial_learning_rate
         if self.num_timestamps is None:
             self.num_features = 1 #number of target features
         else:
@@ -60,6 +72,7 @@ class CryptoDLSolutions:
             0: normalize over max and min of whole dataset known
             1: normalize minmaxscaler
             2: minmax by columns considering whole dataset column
+            3:
         '''
 
         #TODO create more norm strategies
@@ -87,11 +100,14 @@ class CryptoDLSolutions:
     def reverse_norm(self, df_to_norm):
         '''
         We have to return the normalize to all columns. Different strategies needed
+        Not normal distibution so Standar Scaler not needed
 
         Strategies:
             0: normalize over max and min of whole dataset known
             1: normalize minmaxscaler
             2: minmax by columns considering whole dataset column
+            3: Ln
+            4: (Close-Low)/(High-Low)
         '''
         
         #TODO create more norm strategies
@@ -156,43 +172,50 @@ class CryptoDLSolutions:
         '''
         Build LSTM model
 
-        Strategies:
-            0: binary
-            1: mse
+        Model Selection:
+            0: LSTM
+            1: GRU
+            2:
 
         '''
 
-        #TODO parametrize layers and neurons
-
+        #TODO create more models
 
         self.train_test_split()
-        # design network
-        self.model = Sequential()
-        self.model.add(LSTM(50, return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
 
-        # Adding a second LSTM layer and some Dropout regularisation
-        self.model.add(LSTM(units = 50, return_sequences = True))
-        self.model.add(Dropout(0.2))
-
-        # Adding a third LSTM layer and some Dropout regularisation
-        self.model.add(LSTM(units = 50, return_sequences = True))
-        self.model.add(Dropout(0.2))
-
-        # Adding a fourth LSTM layer and some Dropout regularisation
-        self.model.add(LSTM(units = 50))
-        self.model.add(Dropout(0.2))
-
-        if self.strat == 0:
-            # Adding the output layer
-            self.model.add(Dense(units = self.num_features, activation='sigmoid'))
-            # Compile
-            self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+        #### ---- LSTM ---- ####
+        if self.model_sel == 0:
+            #### BASE MODEL ####
+            # design network
+            self.model = Sequential()
+            self.model.add(LSTM(50, return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
+            
+            #### LAYERS ####
+            for i in range(self.layers):
+                # Adding LSTM layers and some Dropout regularisation
+                # Last layer without return sequence
+                self.model.add(LSTM(units = self.neurons[i], return_sequences = False if i == self.layers-1 else True))
+                self.model.add(Dropout(0.2))
         
-        elif self.strat == 1:
-            # Adding the output layer
-            self.model.add(Dense(units = self.num_features, activation='relu'))
-            # Compile
-            self.model.compile(loss='mse', optimizer='adam')
+        #### ---- GRU ---- ####
+        elif self.model_sel == 1:
+            #### BASE MODEL ####
+            # design network
+            self.model = Sequential()
+            self.model.add(GRU(50, return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
+            
+            #### LAYERS ####
+            for i in range(self.layers):
+                # Adding LSTM layers and some Dropout regularisation
+                self.model.add(GRU(units = self.neurons[i], return_sequences = False if i == self.layers-1 else True))
+                self.model.add(Dropout(0.2))
+
+        #### OUTPUT LAYER ####
+
+        # Adding the output layer
+        self.model.add(Dense(units = self.num_features, activation=self.activation))
+        # Compile
+        self.model.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
 
     def train(self):
         '''
@@ -205,9 +228,32 @@ class CryptoDLSolutions:
 
 
         ###### TODO CREATE CALLBACKS
-        callbacks = 0
+        # Modelcheckpoint
+        checkpoint_filepath = '/tmp/checkpoint'
+        callbacks = []
+        callbacks.append(ModelCheckpoint(
+            filepath=checkpoint_filepath,
+            save_weights_only=True,
+            monitor='val_accuracy',
+            mode='max',
+            save_best_only=True))
+
+        # Earlystopping
+        callbacks.append(EarlyStopping(monitor='loss', patience=3))
+
+        # TensorBoard?
+
+        # Learnign rate scheduler
+        initial_learning_rate = self.initial_learning_rate
+        decay = initial_learning_rate / self.epochs
+        def lr_time_based_decay(epoch, lr):
+            return lr * 1 / (1 + decay * epoch)
+        callbacks.append(LearningRateScheduler(lr_time_based_decay, verbose=1))
+
+        print('Y shape', self.train_y.shape)
 
         self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks)
+        self.model.load_weights(checkpoint_filepath)
 
     def predict(self):
         '''

@@ -188,6 +188,5 @@ class FeaturesExtractor:
         '''
         Returns column with diff between close prices separated period periods
         '''
-        #TODO 
-        
-        return 0
+
+        return close - close.shift(period)
