@@ -74,6 +74,7 @@ class DataProcessor:
             if self.cryptos_names[i] == cryptos_name:
                 df['High Low Difference'] = df['high'] - df['low']
                 df['Open Close Difference'] = df['close'] - df['open']
+                df['Close Low High Norm'] = (df['close'] - df['low'])/(df['high'] - df['low'])
                 df['Sup 5'] = self.fe.get_support_resistance(df, 5, 'S')
                 df['Sup 50'] = self.fe.get_support_resistance(df, 50, 'S')
                 df['Sup 200'] = self.fe.get_support_resistance(df, 200, 'S')

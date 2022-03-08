@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from sklearn.metrics import mean_squared_error
 from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
+import math
 
 class CryptoDLSolutions:
     '''
@@ -72,7 +73,8 @@ class CryptoDLSolutions:
             0: normalize over max and min of whole dataset known
             1: normalize minmaxscaler
             2: minmax by columns considering whole dataset column
-            3:
+            3: Ln
+            4: None: already normalized
         '''
 
         #TODO create more norm strategies
@@ -96,6 +98,11 @@ class CryptoDLSolutions:
                 
             norm = np.asarray(norm)
             return norm.transpose()
+        elif self.norm_strat == 3:
+            return np.log(df_to_norm)
+        elif self.norm_strat == 4:
+            pass
+
 
     def reverse_norm(self, df_to_norm):
         '''
@@ -107,7 +114,7 @@ class CryptoDLSolutions:
             1: normalize minmaxscaler
             2: minmax by columns considering whole dataset column
             3: Ln
-            4: (Close-Low)/(High-Low)
+            4: None: desnormalization made outside
         '''
         
         #TODO create more norm strategies
@@ -127,6 +134,10 @@ class CryptoDLSolutions:
                 i+=1
             norm = np.asarray(norm)
             return norm.transpose()
+        elif self.norm_strat == 3:
+            return np.exp(df_to_norm)
+        elif self.norm_strat == 4:
+            pass
 
     def train_test_split(self):
         # split into train and test sets
@@ -234,12 +245,12 @@ class CryptoDLSolutions:
         callbacks.append(ModelCheckpoint(
             filepath=checkpoint_filepath,
             save_weights_only=True,
-            monitor='val_accuracy',
-            mode='max',
+            monitor='val_mse',
+            mode='min',
             save_best_only=True))
 
         # Earlystopping
-        callbacks.append(EarlyStopping(monitor='loss', patience=3))
+        #callbacks.append(EarlyStopping(monitor='loss', patience=5))
 
         # TensorBoard?
 
@@ -248,7 +259,7 @@ class CryptoDLSolutions:
         decay = initial_learning_rate / self.epochs
         def lr_time_based_decay(epoch, lr):
             return lr * 1 / (1 + decay * epoch)
-        callbacks.append(LearningRateScheduler(lr_time_based_decay, verbose=1))
+        #callbacks.append(LearningRateScheduler(lr_time_based_decay, verbose=1))
 
         print('Y shape', self.train_y.shape)
 
@@ -260,16 +271,13 @@ class CryptoDLSolutions:
         Return prediciton for test set
         '''
         # Make a prediction
-        print('testx',self.test_X.shape)
         preds = self.model.predict(self.test_X)
         test_X = self.test_X.reshape((self.test_X.shape[0], self.test_X.shape[1] * self.test_X.shape[2]))
-        print('preds', preds)
 
         # Invert scaling for forecast
         inv_preds = np.concatenate((test_X[:, :], preds), axis=1)
         inv_preds = self.reverse_norm(inv_preds)
         inv_preds = inv_preds[:,-self.num_features:] # antes -1
-        print('preds rev norm',inv_preds)
 
         # Invert scaling for actual
         # test_y = self.test_y.reshape((len(self.test_y), 1))
