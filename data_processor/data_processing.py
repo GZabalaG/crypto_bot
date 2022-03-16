@@ -125,7 +125,7 @@ class DataProcessor:
                 df['fri'] = one_hot['fri']
                 df['sat'] = one_hot['sat']
                 df['sun'] = one_hot['sun']
-                df['operation'] = self.fe.get_operation(df['close'])
+                df['operation'] = self.fe.get_operation(df['close'], 0.05, 0.05)
                 df['close_diff_5'] = self.fe.get_close_diff(df['close'], 5)
                 df['close_diff_10'] = self.fe.get_close_diff(df['close'], 10)
                 df['close_diff_20'] = self.fe.get_close_diff(df['close'], 20)
@@ -183,7 +183,6 @@ class DataProcessor:
                 X_columns = pd.concat([X_columns, X_col], axis=1)
 
         return pd.concat([X_columns, targets], axis=1).iloc[prev_periods-1:-pred_periods]
-
 
     def detect_anomalies(self, crypto_name): # Anomaly detection method
         '''

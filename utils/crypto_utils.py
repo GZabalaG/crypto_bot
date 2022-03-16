@@ -176,13 +176,106 @@ class FeaturesExtractor:
     def get_shift(self, df, column, shift):
         return df[column].shift(periods = shift)
 
-    def get_operation(self, close):
+    def get_operation(self, close, pbuy, psell):
         '''
         Creates artificial column with bests operations to make in each point
-        '''
-        #TODO 
 
-        return 0
+        pbuy: indicator of how much does the value has to grow to consider it inflexion buy point
+        psell: indicator of how much the value has to decrease to consider it inflexion sell point (aprox 5% over last higher point)
+        Maybe done with api (spread)
+
+        Iteration over close prices:
+        Set ref point to calculate condition over pbuy or psell (could be last high or last low)
+        Set first value to hold
+        If value met the condition of pbuy or psell set the previous point to buy or sell (check not to make two continuous buys or sells)
+        If not set to hold
+
+        Operations can be:
+            buy
+            sell
+            hold
+        '''
+        op = []
+        prev_val = close.iloc[0]
+        prev_state = 'eq'
+        for i, value in close.items():
+            if value > prev_val:
+                state = 'asc'
+            elif prev_val > value:
+                state = 'desc'
+            else:
+                state = 'eq'
+
+            print(i)
+            print('STATE',state)
+            print('PREV_STATE', prev_state)
+            print('VALUE',value)
+            print('PREV_VALUE',prev_val)
+
+            if prev_state == state: 
+                ops = 'hold'
+                op.append('hold')
+            ## Chequear que el valor baje el psell indicado. 
+            # Se debe iterar sobre el dataset close a partir del valor actual para ver si en algun momento bajamos de psell antes de volver a subir
+            # Si no bajamos de psell no se vende y se indica hold
+            elif (prev_state == 'asc' or prev_state == 'eq') and state == 'desc':
+                sell_flag = False
+                next_closes = close.loc[i:].copy()
+                prev_value_2 = close.loc[i-1]
+                for i_2, value_2 in next_closes.items():
+                    if value_2 > prev_value_2:
+                        print('Condition not met, price higher again', value_2, '>', prev_value_2)
+                        break
+                    print('cheking ref', prev_val, 'for new value', value_2)
+                    if (prev_val-value_2)/prev_val > psell:
+                        print('Condition met', (prev_val-value_2)/prev_val, '>', psell)
+                        op.append('sell')
+                        ops = 'sell'
+                        sell_flag = True
+                        break
+                    print('Condition not met', (prev_val-value_2)/prev_val, '<=', psell)
+                if not sell_flag: 
+                    print('Condition not met', (prev_val-value_2)/prev_val, '<=', psell)
+                    op.append('hold')
+                    ops = 'hold'
+                
+                #ops = 'sell'
+                #op.append('sell')
+            # Idem for buy
+            elif (prev_state == 'desc' or prev_state == 'eq') and state == 'asc':
+                sell_flag = False
+                next_closes = close.loc[i:].copy()
+                prev_value_2 = close.loc[i-1]
+                for i_2, value_2 in next_closes.items():
+                    if value_2 < prev_value_2:
+                        print('Condition not met, price lower again', value_2, '<', prev_value_2)
+                        break
+                    print('cheking ref', prev_val, 'for new value', value_2)
+                    if abs((prev_val-value_2)/prev_val) > pbuy:
+                        print('Condition met', abs((prev_val-value_2)/prev_val), '>', pbuy)
+                        op.append('buy')
+                        ops = 'buy'
+                        sell_flag = True
+                        break
+                    print('Condition not met', abs((prev_val-value_2)/prev_val), '<=', pbuy)
+                if not sell_flag: 
+                    print('Condition not met', abs((prev_val-value_2)/prev_val), '<=', pbuy)
+                    op.append('hold')
+                    ops = 'hold'
+                
+                #ops = 'buy'
+                #op.append('buy')
+            else:
+                op.append('hold')
+
+            print(ops)  
+            print('------')
+
+            prev_val = close[i]
+            prev_state = state
+        op = op[1:]
+        op.append('hold')
+        return op
 
     def get_close_diff(self, close, period):
         '''
