@@ -206,12 +206,6 @@ class FeaturesExtractor:
             else:
                 state = 'eq'
 
-            print(i)
-            print('STATE',state)
-            print('PREV_STATE', prev_state)
-            print('VALUE',value)
-            print('PREV_VALUE',prev_val)
-
             if prev_state == state: 
                 ops = 'hold'
                 op.append('hold')
@@ -224,18 +218,13 @@ class FeaturesExtractor:
                 prev_value_2 = close.loc[i-1]
                 for i_2, value_2 in next_closes.items():
                     if value_2 > prev_value_2:
-                        print('Condition not met, price higher again', value_2, '>', prev_value_2)
                         break
-                    print('cheking ref', prev_val, 'for new value', value_2)
                     if (prev_val-value_2)/prev_val > psell:
-                        print('Condition met', (prev_val-value_2)/prev_val, '>', psell)
                         op.append('sell')
                         ops = 'sell'
                         sell_flag = True
                         break
-                    print('Condition not met', (prev_val-value_2)/prev_val, '<=', psell)
                 if not sell_flag: 
-                    print('Condition not met', (prev_val-value_2)/prev_val, '<=', psell)
                     op.append('hold')
                     ops = 'hold'
                 
@@ -248,18 +237,13 @@ class FeaturesExtractor:
                 prev_value_2 = close.loc[i-1]
                 for i_2, value_2 in next_closes.items():
                     if value_2 < prev_value_2:
-                        print('Condition not met, price lower again', value_2, '<', prev_value_2)
                         break
-                    print('cheking ref', prev_val, 'for new value', value_2)
                     if abs((prev_val-value_2)/prev_val) > pbuy:
-                        print('Condition met', abs((prev_val-value_2)/prev_val), '>', pbuy)
                         op.append('buy')
                         ops = 'buy'
                         sell_flag = True
                         break
-                    print('Condition not met', abs((prev_val-value_2)/prev_val), '<=', pbuy)
                 if not sell_flag: 
-                    print('Condition not met', abs((prev_val-value_2)/prev_val), '<=', pbuy)
                     op.append('hold')
                     ops = 'hold'
                 
@@ -268,8 +252,6 @@ class FeaturesExtractor:
             else:
                 op.append('hold')
 
-            print(ops)  
-            print('------')
 
             prev_val = close[i]
             prev_state = state
