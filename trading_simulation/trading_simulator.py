@@ -159,14 +159,41 @@ class DLSimulator:
 
     Make predictions and decide stock operations guideed by the predictions
     '''
+    #### 1 STEP ####
+    crypto = 'ETH'
+    prev_periods = 5
+    pred_periods = 10
+    model_selector = 'lstm'
+    columns = ['RSI', 'close']
+    num_features = len(columns)
+    target = None
+    #target = 'close'
 
-    def __init__(self, processor, crypto_name, periods_to_retraining, prev_periods, pred_periods, model_selector, columns, target):
+
+    #### STEP 2 ####
+    norm_strat = 2
+    model_sel = 0
+    layers = 3
+    neurons = [50, 50, 50, 50]
+    batch_size = 64
+    epochs = 150
+    activations = ['relu', 'sigmoid']
+    losses = ['mse', 'binary_crossentropy']
+    activation = 'relu'
+    loss = 'mse'
+    metrics = ['mse']
+    optimizer = 'adam'
+    initial_learning_rate = 0.01
+
+    def __init__(self, crypto, prev_periods, pred_periods, columns, target,
+    norm_strat, model_sel, layers, neurons, batch_size, epochs, 
+    activation, loss, metrics, optimizer, initial_learning_rate):
         '''
         periods_to_re...: periods to retrain model
         prev_periods: periodos usados como X
         pred_periods: periods shifted / periods to predict
         columns: columns to be selected from df processed to be used in model. Last column is target columns
-        '''
+        
         self.periods_to_retraining = periods_to_retraining
         self.prev_periods = prev_periods
         self.pred_periods = pred_periods
@@ -184,6 +211,87 @@ class DLSimulator:
 
         order_column_names = ['close', 'total(€)', 'stop_loss', 'take_profit']
         self.orders = pd.DataFrame(columns = order_column_names)
+        '''
+        
+        self.crypto = crypto
+        self.columns = columns
+        self.target = target
+        self.prev_periods = prev_periods
+        self.pred_periods = pred_periods
+        num_features = len(columns)
+        if target != None: 
+            num_timestamps = None
+        else:
+            num_timestamps = prev_periods
+
+        self.processor = DataProcessor([self.crypto])
+        self.tranforms_df()
+
+        self.lstm = CryptoDLSolutions(self.df, norm_strat, model_sel, layers, neurons, batch_size, epochs, num_timestamps, 
+        num_features, activation, loss, metrics, optimizer, initial_learning_rate)
+
+        order_column_names = ['close', 'value', 'stop_loss', 'take_profit']
+        self.orders = pd.DataFrame(columns = order_column_names)
+
+        p_fake_real_df = 0.75
+        self.start_index = int(len(self.df) * p_fake_real_df)
+
+    def tranforms_df(self):
+        self.processor.load_data()
+        self.processor.clean_data(self.crypto)
+        self.processor.feature_extraction(self.crypto)
+        self.df = self.processor.feature_selection(self.crypto, self.columns)
+        self.df = self.processor.lstm_processing(self.df, self.target, self.prev_periods, self.pred_periods)
+        #TODO clean nulls values in df
+
+    def check_orders(self):
+        '''
+        Check made orders to sell if needed
+        '''
+        #TODO
+
+    def train_model(self, df):
+        '''
+        Train model with features applied in constructor
+        df: dataset from init to todays value
+        Before training tranformation of df is applied
+        '''
+        # Set df to model object
+        self.lstm.set_dataset(df)
+
+        # Train
+        self.lstm.build()
+        self.lstm.train()
+    
+    def predict(self, row):
+        self.lstm.set_test(row) #TODO Extract last row (unknown ouptut) and set it as row to predict. Maybe not needed. Done in train model method
+        return self.lstm.predict()
+
+    def apply_orders(self, predicted, strat):
+        '''
+        Apply orders based on predicted value and strategy
+        '''
+        #TODO
+
+    def simulate(self):
+        #TODO start iteration in last row of real df
+        for index, row in self.df.iterrows():
+            if index > self.start_index:
+           
+                #Check previous orders
+                self.check_orders()
+
+                #Train model
+                self.train_model(self.df.iloc[:index]) #TODO extract df from init to todays. Update real df with new value
+                
+                #Predict next value
+                pred = self.predict(row)
+
+                #Apply new orders 
+                self.apply_orders(pred, self.strat)
+
+                break
+
 
     def get_df(self):
         return self.df
@@ -222,8 +330,10 @@ class DLSimulator:
         pred_final = preds[-1]
         return self.model.predict(df_to_predict)
 
-    def simulate(self):
+    def simulate2(self):
         '''
+        WE'LL NEED TO TRAIN EACH NEW VALUE. UPDATE WITH NEW REAL VALUES EACH ROW
+
         For each M periods
             re train model
             re fill predicted data with real one

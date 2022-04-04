@@ -103,7 +103,6 @@ class CryptoDLSolutions:
         elif self.norm_strat == 4:
             pass
 
-
     def reverse_norm(self, df_to_norm):
         '''
         We have to return the normalize to all columns. Different strategies needed
