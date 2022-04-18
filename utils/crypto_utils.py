@@ -2,6 +2,20 @@
 import pandas as pd
 import numpy as np
 from pandas.core.frame import DataFrame
+import matplotlib.pyplot as plt
+
+class ModelAnalysis:
+    def __init__(self):
+        pass
+
+    def draw_history(self, h):
+        plt.plot(h.history['loss'])
+        plt.plot(h.history['val_loss'])
+        plt.title('model accuracy')
+        plt.ylabel('loss')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'val'], loc='upper left')
+        plt.show()
 
 class FeaturesExtractor:
 

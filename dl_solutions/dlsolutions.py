@@ -251,7 +251,7 @@ class CryptoDLSolutions:
         # Earlystopping
         #callbacks.append(EarlyStopping(monitor='loss', patience=5))
 
-        # TensorBoard?
+        # TensorBoard? TODO
 
         # Learnign rate scheduler
         initial_learning_rate = self.initial_learning_rate
@@ -262,7 +262,7 @@ class CryptoDLSolutions:
 
         print('Y shape', self.train_y.shape)
 
-        self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks)
+        self.history = self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks)
         self.model.load_weights(checkpoint_filepath)
 
     def predict(self):
@@ -291,6 +291,9 @@ class CryptoDLSolutions:
         print('Test RMSE: %.3f' % rmse)
         return inv_preds
     
+    def get_history(self):
+        return self.history
+        
     def get_model(self):
         return self.model
 

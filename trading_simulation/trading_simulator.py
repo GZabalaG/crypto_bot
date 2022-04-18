@@ -242,7 +242,7 @@ class DLSimulator:
         self.processor.feature_extraction(self.crypto)
         self.df = self.processor.feature_selection(self.crypto, self.columns)
         self.df = self.processor.lstm_processing(self.df, self.target, self.prev_periods, self.pred_periods)
-        #TODO clean nulls values in df
+        self.df.dropna(inplace=True)
 
     def check_orders(self):
         '''
@@ -262,9 +262,12 @@ class DLSimulator:
         # Train
         self.lstm.build()
         self.lstm.train()
-    
+
+    def get_history(self):
+        return self.lstm.get_history()
+
     def predict(self, row):
-        self.lstm.set_test(row) #TODO Extract last row (unknown ouptut) and set it as row to predict. Maybe not needed. Done in train model method
+        self.lstm.set_test(row)
         return self.lstm.predict()
 
     def apply_orders(self, predicted, strat):
@@ -282,7 +285,7 @@ class DLSimulator:
                 self.check_orders()
 
                 #Train model
-                self.train_model(self.df.iloc[:index]) #TODO extract df from init to todays. Update real df with new value
+                self.train_model(self.df.iloc[:index])
                 
                 #Predict next value
                 pred = self.predict(row)
