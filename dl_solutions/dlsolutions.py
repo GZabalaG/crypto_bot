@@ -17,7 +17,7 @@ class CryptoDLSolutions:
 
     Create the model, train and predict next values
     '''
-    def __init__(self, df, norm_strat, model_sel, layers, neurons, batch_size, epochs, num_timestamps, num_features, activation, loss, metrics, optimizer, initial_learning_rate):
+    def __init__(self, df, norm_strat, model_sel, layers, neurons, batch_size, epochs, num_timestamps, num_features, activation, loss, metrics, optimizer, initial_learning_rate, callbacks):
         '''
         df: dataset to use in model
         norm_strat: normalization strategy
@@ -48,6 +48,7 @@ class CryptoDLSolutions:
         self.metrics = metrics
         self.optimizer = optimizer
         self.initial_learning_rate = initial_learning_rate
+        self.callbacks = callbacks
         if self.num_timestamps is None:
             self.num_features = 1 #number of target features
         else:
@@ -144,26 +145,26 @@ class CryptoDLSolutions:
         train_frac = 1
         n_train_days = int(len(values)*train_frac)
         train = self.normalize(values[:n_train_days, :])
-        test = self.normalize(values[n_train_days:, :])
+        #test = self.normalize(values[n_train_days:, :])
 
         # split into input and outputs. We pass num_features as number of target features. Because timestamps
         # can be null, this value can be 1 if timestamps are null
         self.train_X, self.train_y = train[:, :-self.num_features], train[:, -self.num_features:]
-        self.test_X, self.test_y = test[:, :-self.num_features], test[:, -self.num_features:]
+        #self.test_X, self.test_y = test[:, :-self.num_features], test[:, -self.num_features:]
 
         # reshape input to be 3D [samples, timesteps, features]
         # If timestamps is None we're defining timestamps as features so the whole row represents the features*timestamps
         # We need to reshape 'y' in case of use of timestamps
         if self.num_timestamps is None:
             self.train_X = self.train_X.reshape((self.train_X.shape[0], 1, self.train_X.shape[1]))
-            self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
+            #self.test_X = self.test_X.reshape((self.test_X.shape[0], 1, self.test_X.shape[1]))
         else:
             self.train_X = self.train_X.reshape((self.train_X.shape[0], self.num_timestamps, self.num_features))
-            self.test_X = self.test_X.reshape((self.test_X.shape[0], self.num_timestamps, self.num_features))
+            #self.test_X = self.test_X.reshape((self.test_X.shape[0], self.num_timestamps, self.num_features))
             self.train_y = self.train_y.reshape((self.train_y.shape[0], self.num_features))
-            self.test_y = self.test_y.reshape((self.test_y.shape[0], self.num_features))
+            #self.test_y = self.test_y.reshape((self.test_y.shape[0], self.num_features))
 
-        print('Input shape:', self.train_X.shape, self.train_y.shape, self.test_X.shape, self.test_y.shape)
+        print('Input shape:', self.train_X.shape, self.train_y.shape)
         
     def set_test(self, test_df):
         test = self.normalize(test_df.values)
@@ -185,7 +186,6 @@ class CryptoDLSolutions:
         Model Selection:
             0: LSTM
             1: GRU
-            2:
 
         '''
 
@@ -227,6 +227,8 @@ class CryptoDLSolutions:
         # Compile
         self.model.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
 
+        print(self.model.summary())
+
     def train(self):
         '''
         Train LSTM model
@@ -236,29 +238,29 @@ class CryptoDLSolutions:
         val_X = self.train_X[n_val_days:]
         val_y = self.train_y[n_val_days:]
 
-
-        ###### TODO CREATE CALLBACKS
         # Modelcheckpoint
-        checkpoint_filepath = '/tmp/checkpoint'
-        callbacks = []
-        callbacks.append(ModelCheckpoint(
-            filepath=checkpoint_filepath,
-            save_weights_only=True,
-            monitor='val_mse',
-            mode='min',
-            save_best_only=True))
+        if('mc' in self.callbacks):
+            checkpoint_filepath = '/tmp/checkpoint'
+            callbacks = []
+            callbacks.append(ModelCheckpoint(
+                filepath=checkpoint_filepath,
+                save_weights_only=True,
+                monitor='val_mse',
+                mode='min',
+                save_best_only=True))
 
         # Earlystopping
-        #callbacks.append(EarlyStopping(monitor='loss', patience=5))
+        if('es' in self.callbacks):
+            callbacks.append(EarlyStopping(monitor='loss', patience=5))
 
-        # TensorBoard? TODO
 
         # Learnign rate scheduler
-        initial_learning_rate = self.initial_learning_rate
-        decay = initial_learning_rate / self.epochs
-        def lr_time_based_decay(epoch, lr):
-            return lr * 1 / (1 + decay * epoch)
-        #callbacks.append(LearningRateScheduler(lr_time_based_decay, verbose=1))
+        if('ls' in self.callbacks):
+            initial_learning_rate = self.initial_learning_rate
+            decay = initial_learning_rate / self.epochs
+            def lr_time_based_decay(epoch, lr):
+                return lr * 1 / (1 + decay * epoch)
+            callbacks.append(LearningRateScheduler(lr_time_based_decay, verbose=1))
 
         print('Y shape', self.train_y.shape)
 
@@ -289,6 +291,7 @@ class CryptoDLSolutions:
         rmse = np.sqrt(mean_squared_error(inv_y, inv_preds))
         print('real', inv_y)
         print('Test RMSE: %.3f' % rmse)
+        print('Diff', inv_y - inv_preds)
         return inv_preds
     
     def get_history(self):

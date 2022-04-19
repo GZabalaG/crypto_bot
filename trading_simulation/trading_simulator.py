@@ -187,7 +187,7 @@ class DLSimulator:
 
     def __init__(self, crypto, prev_periods, pred_periods, columns, target,
     norm_strat, model_sel, layers, neurons, batch_size, epochs, 
-    activation, loss, metrics, optimizer, initial_learning_rate):
+    activation, loss, metrics, optimizer, initial_learning_rate, callbacks):
         '''
         periods_to_re...: periods to retrain model
         prev_periods: periodos usados como X
@@ -228,7 +228,7 @@ class DLSimulator:
         self.tranforms_df()
 
         self.lstm = CryptoDLSolutions(self.df, norm_strat, model_sel, layers, neurons, batch_size, epochs, num_timestamps, 
-        num_features, activation, loss, metrics, optimizer, initial_learning_rate)
+        num_features, activation, loss, metrics, optimizer, initial_learning_rate, callbacks)
 
         order_column_names = ['close', 'value', 'stop_loss', 'take_profit']
         self.orders = pd.DataFrame(columns = order_column_names)
@@ -265,6 +265,9 @@ class DLSimulator:
 
     def get_history(self):
         return self.lstm.get_history()
+    
+    def get_model(self):
+        return self.lstm.get_model()
 
     def predict(self, row):
         self.lstm.set_test(row)
