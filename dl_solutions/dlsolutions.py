@@ -102,7 +102,7 @@ class CryptoDLSolutions:
         elif self.norm_strat == 3:
             return np.log(df_to_norm)
         elif self.norm_strat == 4:
-            pass
+            return df_to_norm
 
     def reverse_norm(self, df_to_norm):
         '''
@@ -137,7 +137,7 @@ class CryptoDLSolutions:
         elif self.norm_strat == 3:
             return np.exp(df_to_norm)
         elif self.norm_strat == 4:
-            pass
+            return df_to_norm
 
     def train_test_split(self):
         # split into train and test sets
@@ -198,13 +198,13 @@ class CryptoDLSolutions:
             #### BASE MODEL ####
             # design network
             self.model = Sequential()
-            self.model.add(LSTM(50, return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
+            self.model.add(LSTM(self.neurons[0], return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
             
             #### LAYERS ####
             for i in range(self.layers):
                 # Adding LSTM layers and some Dropout regularisation
                 # Last layer without return sequence
-                self.model.add(LSTM(units = self.neurons[i], return_sequences = False if i == self.layers-1 else True))
+                self.model.add(LSTM(units = self.neurons[i+1], return_sequences = False if i == self.layers-1 else True))
                 self.model.add(Dropout(0.2))
         
         #### ---- GRU ---- ####
@@ -212,12 +212,12 @@ class CryptoDLSolutions:
             #### BASE MODEL ####
             # design network
             self.model = Sequential()
-            self.model.add(GRU(50, return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
+            self.model.add(GRU(self.neurons[0], return_sequences = True, input_shape=(self.train_X.shape[1], self.train_X.shape[2])))
             
             #### LAYERS ####
             for i in range(self.layers):
                 # Adding LSTM layers and some Dropout regularisation
-                self.model.add(GRU(units = self.neurons[i], return_sequences = False if i == self.layers-1 else True))
+                self.model.add(GRU(units = self.neurons[i+1], return_sequences = False if i == self.layers-1 else True))
                 self.model.add(Dropout(0.2))
 
         #### OUTPUT LAYER ####
@@ -251,7 +251,7 @@ class CryptoDLSolutions:
 
         # Earlystopping
         if('es' in self.callbacks):
-            callbacks.append(EarlyStopping(monitor='loss', patience=5))
+            callbacks.append(EarlyStopping(monitor='loss', patience=10))
 
 
         # Learnign rate scheduler
@@ -265,7 +265,9 @@ class CryptoDLSolutions:
         print('Y shape', self.train_y.shape)
 
         self.history = self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks)
-        self.model.load_weights(checkpoint_filepath)
+
+        if('mc' in self.callbacks):
+            self.model.load_weights(checkpoint_filepath)
 
     def predict(self):
         '''
@@ -292,6 +294,7 @@ class CryptoDLSolutions:
         print('real', inv_y)
         print('Test RMSE: %.3f' % rmse)
         print('Diff', inv_y - inv_preds)
+        print('% Diff', 100*((inv_y - inv_preds)/inv_y), '%')
         return inv_preds
     
     def get_history(self):

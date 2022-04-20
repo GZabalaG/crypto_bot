@@ -2,9 +2,12 @@
 #Future methods to load streaming data and upload live forecast
 
 import pandas as pd
+import numpy as np
 from pandas.core.frame import DataFrame
 import datetime
 from utils.crypto_utils import FeaturesExtractor
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import OneHotEncoder
 
 
 class DataProcessor:
@@ -126,11 +129,14 @@ class DataProcessor:
                 df['sat'] = one_hot['sat']
                 df['sun'] = one_hot['sun']
                 df['operation'] = self.fe.get_operation(df['close'], 0.05, 0.05)
+                one_hot_op = pd.get_dummies(df['operation'])
+                df['op_buy'] = one_hot_op['buy']
+                df['op_sell'] = one_hot_op['sell']
+                df['op_hold'] = one_hot_op['hold']
                 df['close_diff_5'] = self.fe.get_close_diff(df['close'], 5)
                 df['close_diff_10'] = self.fe.get_close_diff(df['close'], 10)
                 df['close_diff_20'] = self.fe.get_close_diff(df['close'], 20)
                 df['close_diff_50'] = self.fe.get_close_diff(df['close'], 50)
-
             i+=1
 
     def feature_selection(self, crypto_name, fields): # Feature selection method
@@ -162,6 +168,7 @@ class DataProcessor:
         # For multivariate we myabe use only X1-1, X2-1, X3-1, etc and y column...
 
         # Shift target column by 1
+
         if target is not None:
             targets = self.fe.get_shift(crypto_df, target, -pred_periods)
         else:
@@ -183,8 +190,3 @@ class DataProcessor:
                 X_columns = pd.concat([X_columns, X_col], axis=1)
 
         return pd.concat([X_columns, targets], axis=1).iloc[prev_periods-1:-pred_periods]
-
-    def detect_anomalies(self, crypto_name): # Anomaly detection method
-        '''
-        Build non supervised methods to detect outliers and anomalies and discard data
-        '''
