@@ -10,6 +10,9 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from keras.callbacks import ModelCheckpoint, EarlyStopping, LearningRateScheduler
 import math
+from keras.regularizers import l1_l2
+from keras.regularizers import l1
+from keras.regularizers import l2
 
 class CryptoDLSolutions:
     '''
@@ -245,13 +248,13 @@ class CryptoDLSolutions:
             callbacks.append(ModelCheckpoint(
                 filepath=checkpoint_filepath,
                 save_weights_only=True,
-                monitor='val_mse',
+                monitor='val_' + self.loss,
                 mode='min',
                 save_best_only=True))
 
         # Earlystopping
         if('es' in self.callbacks):
-            callbacks.append(EarlyStopping(monitor='loss', patience=10))
+            callbacks.append(EarlyStopping(monitor='loss', patience=25))
 
 
         # Learnign rate scheduler
@@ -296,7 +299,7 @@ class CryptoDLSolutions:
         print('Diff', inv_y - inv_preds)
         print('% Diff', 100*((inv_y - inv_preds)/inv_y), '%')
         return inv_preds
-    
+
     def get_history(self):
         return self.history
         
