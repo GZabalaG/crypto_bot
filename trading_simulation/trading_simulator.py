@@ -159,31 +159,6 @@ class DLSimulator:
 
     Make predictions and decide stock operations guideed by the predictions
     '''
-    #### 1 STEP ####
-    crypto = 'ETH'
-    prev_periods = 5
-    pred_periods = 10
-    model_selector = 'lstm'
-    columns = ['RSI', 'close']
-    num_features = len(columns)
-    target = None
-    #target = 'close'
-
-
-    #### STEP 2 ####
-    norm_strat = 2
-    model_sel = 0
-    layers = 3
-    neurons = [50, 50, 50, 50]
-    batch_size = 64
-    epochs = 150
-    activations = ['relu', 'sigmoid']
-    losses = ['mse', 'binary_crossentropy']
-    activation = 'relu'
-    loss = 'mse'
-    metrics = ['mse']
-    optimizer = 'adam'
-    initial_learning_rate = 0.01
 
     def __init__(self, crypto, prev_periods, pred_periods, columns, target,
     norm_strat, model_sel, layers, neurons, batch_size, epochs, 
@@ -236,6 +211,17 @@ class DLSimulator:
         p_fake_real_df = 0.75
         self.start_index = int(len(self.df) * p_fake_real_df)
 
+        self.closed_orders = []
+        self.open_order = 0
+        self.order_goal = 0
+        self.buy_sell_mode = 'buy'
+        self.risk = 0.3 # Max loss allowance
+        self.goal_error = 0.1 # Error allowed in predicted goal
+        self.p_buy = 0.2 # How much higer the value has to be than todays price to buy. Always greater than goal_error
+        self.patience = 3
+        self.spread = 0.02
+        self.predicted_values = []
+
     def tranforms_df(self):
         self.processor.load_data()
         self.processor.clean_data(self.crypto)
@@ -244,11 +230,27 @@ class DLSimulator:
         self.df = self.processor.lstm_processing(self.df, self.target, self.prev_periods, self.pred_periods)
         self.df.dropna(inplace=True)
 
-    def check_orders(self):
+    def check_orders(self, todays):
         '''
         Check made orders to sell if needed
         '''
-        #TODO
+        print('CHECKING ORDERS...')
+        # Loss allowance
+        if (self.open_order-todays)/self.open_order > self.risk:
+            self.closed_orders.append(todays/self.open_order)
+            self.buy_sell_mode = 'buy'
+            print('### LOSS ALLOWANCE SELL ###')
+            print('TODAY VALUE:', todays)
+            print('ORDER VALUE:', self.open_order)
+            print('PREDICTED VALUE:', self.order_goal)
+        # Predicted goal
+        elif (todays >= self.order_goal * self.goal_error):
+            self.closed_orders.append(todays/self.open_order)
+            self.buy_sell_mode = 'buy'
+            print('### PREDICTED GOAL SELL ###')
+            print('TODAY VALUE:', todays)
+            print('ORDER VALUE:', self.open_order)
+            print('PREDICTED VALUE:', self.order_goal)
 
     def train_model(self, df):
         '''
@@ -273,93 +275,75 @@ class DLSimulator:
         self.lstm.set_test(row)
         return self.lstm.predict()
 
-    def apply_orders(self, predicted, strat):
+    def apply_orders(self, todays, predicted):
         '''
         Apply orders based on predicted value and strategy
         '''
-        #TODO
+        # Si el valor predicho esta por encima en un p_buy % del valor actual, compramos
+
+        if self.buy_sell_mode == 'buy':
+            if predicted/todays > self.p_buy:
+                self.open_orders = todays
+                self.order_goal = predicted
+                self.buy_sell_mode = 'sell'
+                print('### BUY OPERATION ###')
+                print('VALUE TODAY:', todays)
+                print('VALUE PREDICTED IN 5 DAYS:', self.order_goal)
+        else:
+            # Predicted > previously predicted
+            if predicted >= self.order_goal:
+                self.order_goal = predicted
+                print('### PREDICTED VALUE UPDATE ###')
+                print('VALUE TODAY:', todays)
+                print('VALUE PREDICTED IN 5 DAYS:', self.order_goal)
+            else:
+                # Si la prediccion ha bajado pero ya estamos ganando dinero cerramos
+                if (todays-self.open_order)/todays > self.spread:
+                    self.closed_orders.append(todays/self.open_order)
+                    self.buy_sell_mode = 'buy'
+                    print('### PREDICTED VALUE - NEW PREDICTED LOWER - WIN POSITION ###')
+                    print('VALUE TODAY:', todays)
+                    print('VALUE ORDER:', self.open_order)
+                # Si todavia no ganamos dinero esperamos 3 dias y cerramos operacion
+                else:
+                    if self.patience == 0:
+                        self.closed_orders.append(todays/self.open_order)
+                        self.patience = 3
+                        self.buy_sell_mode = 'buy'
+                    else:
+                        self.patience -= 1
+                    print('### PREDICTED VALUE - NEW PREDICTED LOWER - LOSE POSITION ###')
+                    print('VALUE TODAY:', todays)
+                    print('VALUE ORDER:', self.open_order)
+                    print('PATIENCE:', self.patience)
 
     def simulate(self):
-        #TODO start iteration in last row of real df
+        print('Simulation starting...')
         for index, row in self.df.iterrows():
             if index > self.start_index:
-           
-                #Check previous orders
-                self.check_orders()
+                print('INDEX:', index)
+                print('CLOSE:', row['close_0'])
+                print('MODE:', self.buy_sell_mode)
+                
+                if self.buy_sell_mode == 'sell':
+                    #Check previous orders
+                    self.check_orders(row['close_0'])
 
                 #Train model
+                print('TRAINING MODEL:')
+                print('TRAIN LAST ROWS:', self.df.iloc[index-5:index])
                 self.train_model(self.df.iloc[:index])
                 
                 #Predict next value
+                print('PREDICTING VALUE FOR', row)
                 pred = self.predict(row)
+                self.predicted_values.append(pred)
 
                 #Apply new orders 
-                self.apply_orders(pred, self.strat)
+                self.apply_orders(row['close_0'], pred)
 
                 break
 
 
     def get_df(self):
         return self.df
-
-    def re_train_model(self, index):
-        '''
-        Train new model based on df
-        '''
-        # Get only data processed by simulation
-        df_to_train = self.df[:index].copy() 
-        
-        if(self.model_selector == 'lstm'):
-            self.model = CryptoDLSolutions(df_to_train)
-        elif(self.model_selector == 'tcn'):
-            pass
-        
-        self.model.build()
-        self.model.compile()
-        self.model.train()
-        
-    def make_predictions(self, index, days_to_predict):
-        '''
-        Fill old predicted data with new data
-        Predict next N steps ahead
-
-        We take in account pred_periods so predict() return the today period + pred_periods prediction
-        '''
-        # First we predict the new row. Valorar entrenar lstm diferentes por cada medida y hacer caluclos en base a las predicciones de todas las medidas predichas
-
-        # Second we decide what to do what the predicted data
-
-        n_periods = 20
-        #df_to_predict = self.df.iloc[index, :-1].copy() # probar a pasar solo fila a predecir o multiples filas anteriores 
-        df_to_predict = self.df.iloc[index-n_periods:, :-1].copy()
-        preds = self.model.predict(df_to_predict) # Devuelve y values
-        pred_final = preds[-1]
-        return self.model.predict(df_to_predict)
-
-    def simulate2(self):
-        '''
-        WE'LL NEED TO TRAIN EACH NEW VALUE. UPDATE WITH NEW REAL VALUES EACH ROW
-
-        For each M periods
-            re train model
-            re fill predicted data with real one
-        For each N periods
-            Make predictions
-            Validate old operations
-            Make new stock operations
-        '''
-        for index, row in self.df.iterrows():
-            if index % self.periods_to_retraining == 0 and index >= self.periods_to_retraining:
-                print('Training model at:', index)
-                self.re_train_model(index)
-            if index % self.pred_periods == 0 and index > self.periods_to_retraining:
-                print('Making predictions at:', index)
-                predictions = self.make_predictions(index, 20)
-                print('Validating and making orders at:', index)
-                self.validate_and_make_orders(predictions)
-    
-    def validate_and_make_orders(self, predictions):
-        '''
-        Algorithm to decide orders based on new predictions
-        '''
-        pass

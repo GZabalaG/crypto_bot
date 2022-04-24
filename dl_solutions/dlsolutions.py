@@ -226,7 +226,11 @@ class CryptoDLSolutions:
         #### OUTPUT LAYER ####
 
         # Adding the output layer
-        self.model.add(Dense(units = self.num_features, activation=self.activation))
+        if isinstance(self.activation, str):
+            self.model.add(Dense(units = self.num_features, activation=self.activation))
+        else:
+            self.model.add(Dense(units = self.num_features))
+            self.model.add(self.activation)
         # Compile
         self.model.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
 
@@ -237,7 +241,7 @@ class CryptoDLSolutions:
         Train LSTM model
         '''
         # Creates validation set
-        n_val_days = int(len(self.train_X)*0.95)
+        n_val_days = int(len(self.train_X)*0.80)
         val_X = self.train_X[n_val_days:]
         val_y = self.train_y[n_val_days:]
 
@@ -267,7 +271,14 @@ class CryptoDLSolutions:
 
         print('Y shape', self.train_y.shape)
 
-        self.history = self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks)
+        class_weight = {0: 4.,
+                        1: 4.,
+                        2: 1.}
+
+        if self.activation == 'softmax':
+            self.history = self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks, class_weight = class_weight)
+        else:
+            self.history = self.model.fit(self.train_X, self.train_y, epochs=self.epochs, batch_size=self.batch_size, validation_data=(val_X, val_y), verbose=2, shuffle=False, callbacks=callbacks)
 
         if('mc' in self.callbacks):
             self.model.load_weights(checkpoint_filepath)
