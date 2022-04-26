@@ -282,7 +282,7 @@ class DLSimulator:
         # Si el valor predicho esta por encima en un p_buy % del valor actual, compramos
 
         if self.buy_sell_mode == 'buy':
-            if predicted/todays > self.p_buy:
+            if (predicted-todays)/todays > self.p_buy:
                 self.open_orders = todays
                 self.order_goal = predicted
                 self.buy_sell_mode = 'sell'
@@ -328,6 +328,9 @@ class DLSimulator:
                 if self.buy_sell_mode == 'sell':
                     #Check previous orders
                     self.check_orders(row['close_0'])
+                
+                df_train = self.df.iloc[:index]
+                df_test = self.df.iloc[index:index+1]
 
                 #Train model
                 print('TRAINING MODEL:')
@@ -335,15 +338,12 @@ class DLSimulator:
                 self.train_model(self.df.iloc[:index])
                 
                 #Predict next value
-                print('PREDICTING VALUE FOR', row)
-                pred = self.predict(row)
+                print('PREDICTING VALUE FOR', self.df.iloc[index:index+1])
+                pred = self.predict(self.df.iloc[index:index+1])
                 self.predicted_values.append(pred)
 
                 #Apply new orders 
                 self.apply_orders(row['close_0'], pred)
-
-                break
-
 
     def get_df(self):
         return self.df
