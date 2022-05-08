@@ -189,26 +189,44 @@ class DLSimulator:
         '''
         
         self.crypto = crypto
+        self.prev_periods = prev_periods
+        self.pred_periods = pred_periods
+        self.columns = columns
+        self.target = target
+        self.norm_strat = norm_strat
+        self.model_sel = model_sel
+        self.layers = layers
+        self.neurons = neurons
+        self.batch_size = batch_size
+        self.epochs = epochs
+        self.activation = activation
+        self.loss = loss
+        self.metrics = metrics
+        self.optimizer = optimizer
+        self.initial_learning_rate = initial_learning_rate
+        self.callbacks = callbacks
+
         self.columns = columns
         self.target = target
         self.prev_periods = prev_periods
         self.pred_periods = pred_periods
-        num_features = len(columns)
+        self.num_features = len(columns)
+
         if target != None: 
-            num_timestamps = None
+            self.num_timestamps = None
         else:
-            num_timestamps = prev_periods
+            self.num_timestamps = prev_periods
 
         self.processor = DataProcessor([self.crypto])
         self.tranforms_df()
 
-        self.lstm = CryptoDLSolutions(self.df, norm_strat, model_sel, layers, neurons, batch_size, epochs, num_timestamps, 
-        num_features, activation, loss, metrics, optimizer, initial_learning_rate, callbacks)
+        self.lstm = CryptoDLSolutions(self.df, norm_strat, model_sel, layers, neurons, batch_size, epochs, self.num_timestamps, 
+        self.num_features, activation, loss, metrics, optimizer, initial_learning_rate, callbacks)
 
         order_column_names = ['close', 'value', 'stop_loss', 'take_profit']
         self.orders = pd.DataFrame(columns = order_column_names)
 
-        p_fake_real_df = 0.75
+        p_fake_real_df = 0.96
         self.start_index = int(len(self.df) * p_fake_real_df)
 
         self.closed_orders = []
@@ -216,9 +234,7 @@ class DLSimulator:
         self.order_goal = 0
         self.buy_sell_mode = 'buy'
         self.risk = 0.3 # Max loss allowance
-        self.goal_error = 0.1 # Error allowed in predicted goal
-        self.p_buy = 0.2 # How much higer the value has to be than todays price to buy. Always greater than goal_error
-        self.patience = 3
+        self.p_buy = 0.2 # How much higher the value has to be than todays price to buy. Always greater than goal_error
         self.spread = 0.02
         self.predicted_values = []
 
@@ -244,8 +260,8 @@ class DLSimulator:
             print('ORDER VALUE:', self.open_order)
             print('PREDICTED VALUE:', self.order_goal)
         # Predicted goal
-        elif (todays >= self.order_goal * self.goal_error):
-            self.closed_orders.append(todays/self.open_order)
+        elif (todays >= self.order_goal):
+            self.closed_orders.append(self.open_order/todays)
             self.buy_sell_mode = 'buy'
             print('### PREDICTED GOAL SELL ###')
             print('TODAY VALUE:', todays)
@@ -258,6 +274,7 @@ class DLSimulator:
         df: dataset from init to todays value
         Before training tranformation of df is applied
         '''
+
         # Set df to model object
         self.lstm.set_dataset(df)
 
@@ -283,7 +300,7 @@ class DLSimulator:
 
         if self.buy_sell_mode == 'buy':
             if (predicted-todays)/todays > self.p_buy:
-                self.open_orders = todays
+                self.open_order = todays
                 self.order_goal = predicted
                 self.buy_sell_mode = 'sell'
                 print('### BUY OPERATION ###')
@@ -291,33 +308,22 @@ class DLSimulator:
                 print('VALUE PREDICTED IN 5 DAYS:', self.order_goal)
         else:
             # Predicted > previously predicted
-            if predicted >= self.order_goal:
+            if (predicted-self.order_goal)/predicted >= self.p_buy:
                 self.order_goal = predicted
                 print('### PREDICTED VALUE UPDATE ###')
                 print('VALUE TODAY:', todays)
                 print('VALUE PREDICTED IN 5 DAYS:', self.order_goal)
-            else:
-                # Si la prediccion ha bajado pero ya estamos ganando dinero cerramos
-                if (todays-self.open_order)/todays > self.spread:
+                
+            # Si la prediccion ha bajado pero ya estamos ganando dinero cerramos
+            elif (todays-self.open_order)/todays > self.spread:
                     self.closed_orders.append(todays/self.open_order)
                     self.buy_sell_mode = 'buy'
                     print('### PREDICTED VALUE - NEW PREDICTED LOWER - WIN POSITION ###')
                     print('VALUE TODAY:', todays)
                     print('VALUE ORDER:', self.open_order)
-                # Si todavia no ganamos dinero esperamos 3 dias y cerramos operacion
-                else:
-                    if self.patience == 0:
-                        self.closed_orders.append(todays/self.open_order)
-                        self.patience = 3
-                        self.buy_sell_mode = 'buy'
-                    else:
-                        self.patience -= 1
-                    print('### PREDICTED VALUE - NEW PREDICTED LOWER - LOSE POSITION ###')
-                    print('VALUE TODAY:', todays)
-                    print('VALUE ORDER:', self.open_order)
-                    print('PATIENCE:', self.patience)
 
     def simulate(self):
+        i = 0
         print('Simulation starting...')
         for index, row in self.df.iterrows():
             if index > self.start_index:
@@ -334,7 +340,7 @@ class DLSimulator:
 
                 #Train model
                 print('TRAINING MODEL:')
-                print('TRAIN LAST ROWS:', self.df.iloc[index-5:index])
+                #print('TRAIN LAST ROWS:', self.df.iloc[index-5:index])
                 self.train_model(self.df.iloc[:index])
                 
                 #Predict next value
@@ -344,6 +350,12 @@ class DLSimulator:
 
                 #Apply new orders 
                 self.apply_orders(row['close_0'], pred)
+
+                print('||||----|||| Current Orders:', self.closed_orders, '\n\n\n')
+                if i==30: break
+                i+=1
+
+        return self.start_index, self.predicted_values, self.closed_orders
 
     def get_df(self):
         return self.df

@@ -90,6 +90,7 @@ class DataProcessor:
                 df['SMA 200'] = self.fe.get_sma(df, 200)
                 df['upper_b_band'] = self.fe.get_bollinger_bands(df, 14, 2)[0]
                 df['lower_b_band'] = self.fe.get_bollinger_bands(df, 14, 2)[1]
+                df['EMA_10'] = self.fe.get_ema(df, 10)
                 df['EMA_50'] = self.fe.get_ema(df, 50)
                 df['EMA_200'] = self.fe.get_ema(df, 200)
                 df['MACD'] = self.fe.get_macd(df, 26, 12, 9)[0]

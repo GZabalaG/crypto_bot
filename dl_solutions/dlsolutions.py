@@ -20,7 +20,9 @@ class CryptoDLSolutions:
 
     Create the model, train and predict next values
     '''
-    def __init__(self, df, norm_strat, model_sel, layers, neurons, batch_size, epochs, num_timestamps, num_features, activation, loss, metrics, optimizer, initial_learning_rate, callbacks):
+    def __init__(self, df, norm_strat, model_sel, layers, neurons, 
+    batch_size, epochs, num_timestamps, num_features, activation, 
+    loss, metrics, optimizer, initial_learning_rate, callbacks):
         '''
         df: dataset to use in model
         norm_strat: normalization strategy
@@ -90,8 +92,6 @@ class CryptoDLSolutions:
             self.sc = MinMaxScaler(feature_range = (0, 1))
             return self.sc.fit_transform(df_to_norm)
         elif self.norm_strat == 2:
-            # Crear df con min max por columnas (extraer nombres columnas del df de entrada)
-            # Por cada columna aplicar minmax con df de min max (iterar sobre df de min max)
             i = 0
             norm = []
             transpose = df_to_norm.transpose()
