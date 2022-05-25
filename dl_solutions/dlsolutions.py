@@ -13,6 +13,7 @@ import math
 from keras.regularizers import l1_l2
 from keras.regularizers import l1
 from keras.regularizers import l2
+from keras import utils
 
 class CryptoDLSolutions:
     '''
@@ -235,6 +236,9 @@ class CryptoDLSolutions:
         self.model.compile(loss=self.loss, optimizer=self.optimizer, metrics=self.metrics)
 
         print(self.model.summary())
+        print(utils.plot_model(self.model, 'model.png', show_shapes=True))
+        print("Model Built")
+
 
     def train(self):
         '''
